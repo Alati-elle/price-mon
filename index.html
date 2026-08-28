@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Price Monitor</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <h1>Price Monitor</h1>
+          <p>История цен по выбранным карточкам товаров</p>
+        </div>
+        <div class="status-pill" id="dataStatus">Загрузка</div>
+      </header>
+
+      <section class="toolbar" aria-label="Добавление товара">
+        <form id="addProductForm">
+          <label for="productUrl">Ссылка на карточку товара</label>
+          <div class="input-row">
+            <input id="productUrl" name="productUrl" type="url" placeholder="https://example.com/product" autocomplete="url" required>
+            <button type="submit">Добавить</button>
+          </div>
+        </form>
+        <p class="note" id="addProductNote">
+          В первой версии форма готовит запись для `data/products.json`; сохранение в репозиторий выполняется через commit.
+        </p>
+      </section>
+
+      <section class="layout">
+        <aside class="product-list" aria-label="Отслеживаемые товары">
+          <div class="section-heading">
+            <h2>Товары</h2>
+            <span id="productCount">0</span>
+          </div>
+          <div id="products"></div>
+        </aside>
+
+        <section class="details" aria-live="polite">
+          <div id="emptyState" class="empty-state">
+            <h2>Нет выбранного товара</h2>
+            <p>Добавьте ссылку в `data/products.json` или выберите товар из списка.</p>
+          </div>
+
+          <article id="productDetails" class="product-details hidden">
+            <div class="details-header">
+              <div>
+                <p class="eyebrow" id="storeName"></p>
+                <h2 id="productTitle"></h2>
+              </div>
+              <a id="productLink" class="external-link" href="#" target="_blank" rel="noreferrer">Открыть</a>
+            </div>
+
+            <div class="metrics">
+              <div class="metric">
+                <span>Текущая цена</span>
+                <strong id="currentPrice">-</strong>
+              </div>
+              <div class="metric best">
+                <span>Минимум</span>
+                <strong id="minPrice">-</strong>
+              </div>
+              <div class="metric">
+                <span>Наблюдений</span>
+                <strong id="observationCount">0</strong>
+              </div>
+              <div class="metric">
+                <span>Обновлено</span>
+                <strong id="updatedAt">-</strong>
+              </div>
+            </div>
+
+            <div class="chart-wrap">
+              <canvas id="priceChart" width="1000" height="420" aria-label="График изменения цены"></canvas>
+            </div>
+
+            <div class="history-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Дата</th>
+                    <th>Цена</th>
+                    <th>Статус</th>
+                  </tr>
+                </thead>
+                <tbody id="historyRows"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
