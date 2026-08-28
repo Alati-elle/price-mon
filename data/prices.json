@@ -1,0 +1,25 @@
+{
+  "demo-keyboard": [
+    {
+      "checked_at": "2026-08-25T08:00:00Z",
+      "price": 8490,
+      "currency": "RUB",
+      "status": "ok",
+      "message": "demo"
+    },
+    {
+      "checked_at": "2026-08-26T08:00:00Z",
+      "price": 7990,
+      "currency": "RUB",
+      "status": "ok",
+      "message": "demo"
+    },
+    {
+      "checked_at": "2026-08-27T08:00:00Z",
+      "price": 8290,
+      "currency": "RUB",
+      "status": "ok",
+      "message": "demo"
+    }
+  ]
+}
