@@ -1,0 +1,10 @@
+[
+  {
+    "id": "demo-keyboard",
+    "title": "Демо-товар: клавиатура",
+    "url": "https://example.com/product/demo-keyboard",
+    "store": "example.com",
+    "currency": "RUB",
+    "active": false
+  }
+]
