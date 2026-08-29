@@ -408,7 +408,8 @@ async function refreshPrices() {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     window.open("https://github.com/Alati-elle/price-mon/actions/workflows/update-prices.yml", "_blank", "noreferrer");
-    throw new Error(payload.error || "Открыла ручной запуск в GitHub Actions");
+    setNote("Открыла ручной запуск обновления в GitHub Actions.");
+    return;
   }
   setNote("Ручное обновление запущено. Данные появятся после завершения workflow.", "success");
 }
