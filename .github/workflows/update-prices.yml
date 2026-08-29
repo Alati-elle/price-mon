@@ -2,7 +2,9 @@ name: Update prices
 
 on:
   schedule:
-    - cron: "0 8,14,20 * * *"
+    - cron: "1 21 * * *"
+    - cron: "1 6 * * *"
+    - cron: "0 17 * * *"
   workflow_dispatch:
 
 permissions:
@@ -23,8 +25,8 @@ jobs:
       - name: Update prices
         run: python scripts/update_prices.py
 
-      - name: Commit changed prices
+      - name: Commit changed data
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "Update product prices"
-          file_pattern: data/prices.json
+          file_pattern: data/products.json data/prices.json
