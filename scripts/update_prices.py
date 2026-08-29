@@ -6,11 +6,12 @@ import re
 import sys
 import urllib.error
 import urllib.request
+from http.cookiejar import CookieJar
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -35,8 +36,10 @@ MARKETPLACE_HOSTS = {
     "wildberries": ("wildberries.ru", "wb.ru"),
     "ozon": ("ozon.ru",),
     "yandex_market": ("market.yandex.ru",),
-    "aliexpress": ("aliexpress.ru", "aliexpress.com"),
+    "aliexpress": ("aliexpress.ru", "aliexpress.com", "ali.click"),
 }
+
+SHORT_LINK_HOSTS = {"ali.click", "ozon.ru"}
 
 
 @dataclass
@@ -45,6 +48,8 @@ class PriceResult:
     currency: str
     title: str | None = None
     source: str = "html"
+    image_url: str | None = None
+    resolved_url: str | None = None
 
 
 def load_json(path, default):
@@ -61,18 +66,65 @@ def save_json(path, value):
         file.write("\n")
 
 
+def request_headers(accept):
+    return {
+        "User-Agent": USER_AGENT,
+        "Accept": accept,
+        "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
+    }
+
+
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
 def fetch_html(url):
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(CookieJar()))
     request = urllib.request.Request(
         url,
-        headers={
-            "User-Agent": USER_AGENT,
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
-        },
+        headers=request_headers("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"),
     )
-    with urllib.request.urlopen(request, timeout=30) as response:
+    with opener.open(request, timeout=30) as response:
         charset = response.headers.get_content_charset() or "utf-8"
         return response.read().decode(charset, errors="replace")
+
+
+def resolve_url(url, limit=8):
+    current = url
+    opener = urllib.request.build_opener(NoRedirect, urllib.request.HTTPCookieProcessor(CookieJar()))
+    seen = set()
+    for _ in range(limit):
+        if current in seen:
+            break
+        seen.add(current)
+        request = urllib.request.Request(
+            current,
+            headers=request_headers("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"),
+            method="HEAD",
+        )
+        try:
+            opener.open(request, timeout=20)
+            return current
+        except urllib.error.HTTPError as exc:
+            if exc.code not in {301, 302, 303, 307, 308}:
+                return current
+            location = exc.headers.get("Location")
+            if not location:
+                return current
+            next_url = urljoin(current, location)
+            parsed_next = urlparse(next_url)
+            if parsed_next.netloc.endswith("login.aliexpress.ru"):
+                return current
+            current = next_url
+    return current
+
+
+def normalized_product_url(url):
+    host = (urlparse(url).hostname or "").lower().removeprefix("www.")
+    if host in SHORT_LINK_HOSTS:
+        return resolve_url(url)
+    return url
 
 
 def fetch_json(url):
@@ -80,7 +132,7 @@ def fetch_json(url):
         url,
         headers={
             "User-Agent": USER_AGENT,
-            "Accept": "application/json,text/plain,*/*",
+            "Accept": "*/*",
             "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
         },
     )
@@ -138,6 +190,24 @@ def detect_marketplace(url):
         if any(host == item or host.endswith("." + item) for item in hosts):
             return marketplace
     return "generic"
+
+
+def extract_image_from_meta(page):
+    patterns = [
+        r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']',
+        r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']',
+        r'<meta[^>]+name=["\']twitter:image["\'][^>]+content=["\']([^"\']+)["\']',
+        r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+name=["\']twitter:image["\']',
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, page, re.IGNORECASE | re.DOTALL)
+        if match:
+            image_url = html.unescape(match.group(1)).strip()
+            if image_url.startswith("//"):
+                return "https:" + image_url
+            if image_url.startswith("http://") or image_url.startswith("https://"):
+                return image_url
+    return None
 
 
 def extract_title_from_meta(page):
@@ -263,11 +333,12 @@ def price_from_text(page):
 
 
 def extract_price(page, fallback_currency):
+    image_url = extract_image_from_meta(page)
     for extractor in (price_from_json_ld, price_from_meta, price_from_text):
         price, currency, title = extractor(page)
         if price is not None:
-            return PriceResult(price, currency or fallback_currency or "RUB", title)
-    return PriceResult(None, fallback_currency or "RUB", extract_title_from_meta(page))
+            return PriceResult(price, currency or fallback_currency or "RUB", title, image_url=image_url)
+    return PriceResult(None, fallback_currency or "RUB", extract_title_from_meta(page), image_url=image_url)
 
 
 def extract_wb_article(url):
@@ -276,6 +347,30 @@ def extract_wb_article(url):
         return match.group(1)
     match = re.search(r"\b(?:nm|card)=(\d+)", url)
     return match.group(1) if match else None
+
+
+def wb_image_candidates(article):
+    nm = int(article)
+    vol = nm // 100000
+    part = nm // 1000
+    urls = []
+    for basket in range(1, 61):
+        host = f"basket-{basket:02d}.wbbasket.ru" if basket < 10 else f"basket-{basket}.wbbasket.ru"
+        base = f"https://{host}/vol{vol}/part{part}/{article}/images"
+        urls.extend([f"{base}/big/1.webp", f"{base}/c516x688/1.webp", f"{base}/tm/1.webp"])
+    return urls
+
+
+def first_wb_image(article):
+    for image_url in wb_image_candidates(article):
+        request = urllib.request.Request(image_url, headers=request_headers("image/avif,image/webp,image/*,*/*"), method="HEAD")
+        try:
+            with urllib.request.urlopen(request, timeout=10) as response:
+                if 200 <= response.status < 400:
+                    return image_url
+        except urllib.error.URLError:
+            continue
+    return wb_image_candidates(article)[0]
 
 
 def parse_wb_price(url, fallback_currency):
@@ -311,14 +406,19 @@ def parse_wb_price(url, fallback_currency):
     if isinstance(direct_price, (int, float)) and direct_price > 0:
         prices.append(direct_price / 100)
 
-    price = min(prices) if prices else None
     title = compact_text(" ".join(part for part in [item.get("brand"), item.get("name")] if part))
-    return PriceResult(normalize_price(price), "RUB", title or None, "wildberries-api")
+    image_url = first_wb_image(article)
+    if not prices and item.get("totalQuantity") == 0:
+        return PriceResult(None, "RUB", title or None, "wildberries-out-of-stock", image_url, url)
+
+    price = min(prices) if prices else None
+    return PriceResult(normalize_price(price), "RUB", title or None, "wildberries-api", image_url, url)
 
 
 def parse_embedded_json_price(page, fallback_currency, marketplace):
     candidates = []
     title = extract_title_from_meta(page)
+    image_url = extract_image_from_meta(page)
     patterns = [
         r'"(?:price|finalPrice|currentPrice|salePrice|discountPrice)"\s*:\s*"?(\d[\d\s.,]*)"?',
         r'"(?:priceValue|value)"\s*:\s*"?(\d[\d\s.,]*)"?\s*,\s*"(?:currency|priceCurrency)"\s*:\s*"([A-Z]{3})"',
@@ -334,31 +434,33 @@ def parse_embedded_json_price(page, fallback_currency, marketplace):
             candidates.append((price, currency))
 
     if not candidates:
-        return PriceResult(None, fallback_currency or "RUB", title, f"{marketplace}-embedded-json")
+        return PriceResult(None, fallback_currency or "RUB", title, f"{marketplace}-embedded-json", image_url)
 
     candidates.sort(key=lambda item: item[0])
     price, currency = candidates[0]
-    return PriceResult(normalize_price(price), currency, title, f"{marketplace}-embedded-json")
+    return PriceResult(normalize_price(price), currency, title, f"{marketplace}-embedded-json", image_url)
 
 
 def parse_marketplace_price(product):
-    url = product["url"]
-    marketplace = product.get("marketplace") or detect_marketplace(url)
+    url = normalized_product_url(product["url"])
+    marketplace = detect_marketplace(url) if url != product["url"] else (product.get("marketplace") or detect_marketplace(url))
     fallback_currency = product.get("currency", "RUB")
 
     if marketplace == "wildberries":
         result = parse_wb_price(url, fallback_currency)
-        if result.price is not None:
+        if result.price is not None or result.source == "wildberries-out-of-stock":
             return result
 
     page = fetch_html(url)
     if marketplace in {"ozon", "yandex_market", "aliexpress"}:
         result = parse_embedded_json_price(page, fallback_currency, marketplace)
         if result.price is not None:
+            result.resolved_url = url
             return result
 
     result = extract_price(page, fallback_currency)
     result.source = marketplace if marketplace != "generic" else result.source
+    result.resolved_url = url
     return result
 
 
@@ -366,22 +468,35 @@ def build_observation(product, checked_at):
     try:
         result = parse_marketplace_price(product)
         if result.price is None:
-            return {
+            observation = {
                 "checked_at": checked_at,
                 "price": None,
                 "currency": result.currency,
                 "status": "error",
-                "message": "price not found",
+                "message": result.source if result.source != "html" else "price not found",
             }
+            if result.title:
+                observation["title"] = result.title
+            if result.image_url:
+                observation["image_url"] = result.image_url
+            if result.resolved_url and result.resolved_url != product.get("url"):
+                observation["resolved_url"] = result.resolved_url
+            return observation
 
-        return {
+        observation = {
             "checked_at": checked_at,
             "price": result.price,
             "currency": result.currency,
             "status": "ok",
             "message": result.source,
-            "title": result.title,
         }
+        if result.title:
+            observation["title"] = result.title
+        if result.image_url:
+            observation["image_url"] = result.image_url
+        if result.resolved_url and result.resolved_url != product.get("url"):
+            observation["resolved_url"] = result.resolved_url
+        return observation
     except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError) as exc:
         return {
             "checked_at": checked_at,
@@ -403,7 +518,23 @@ def update_prices(dry_run=False):
             continue
 
         observation = build_observation(product, checked_at)
-        if observation.get("title") and not product.get("title"):
+        if observation.get("resolved_url"):
+            product["resolved_url"] = observation["resolved_url"]
+            product["marketplace"] = detect_marketplace(observation["resolved_url"])
+        if observation.get("image_url"):
+            product["image_url"] = observation["image_url"]
+        current_title = compact_text(product.get("title"))
+        technical_title = current_title in {
+            "",
+            product.get("url", ""),
+            product.get("store", ""),
+            "Wildberries",
+            "Ozon",
+            "Яндекс Маркет",
+            "AliExpress",
+            "Другая площадка",
+        } or current_title.startswith(("Wildberries · ", "Ozon · ", "AliExpress · ", "Другая площадка · "))
+        if observation.get("title") and technical_title:
             product["title"] = observation["title"]
         product.setdefault("marketplace", detect_marketplace(product["url"]))
         prices.setdefault(product["id"], []).append(observation)
