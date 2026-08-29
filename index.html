@@ -8,40 +8,57 @@
   </head>
   <body>
     <main class="app-shell">
-      <header class="topbar">
-        <div>
-          <h1>Price Monitor</h1>
-          <p>История цен по выбранным карточкам товаров</p>
-        </div>
-        <div class="status-pill" id="dataStatus">Загрузка</div>
+      <header class="hero">
+        <nav class="navline" aria-label="Статус сервиса">
+          <a class="brand" href="./" aria-label="Price Monitor">
+            <span class="brand-mark">PM</span>
+            <span>Price Monitor</span>
+          </a>
+          <div class="status-pill" id="dataStatus">Загрузка</div>
+        </nav>
+
+        <section class="hero-grid">
+          <div class="hero-copy">
+            <p class="kicker">Личный радар цен</p>
+            <h1>Следим за карточками, ловим лучший момент для покупки.</h1>
+            <p>WB, Ozon, Яндекс Маркет и AliExpress в одной аккуратной витрине: текущая цена, история и день минимума.</p>
+          </div>
+
+          <section class="add-panel" aria-label="Добавление товара">
+            <form id="addProductForm">
+              <label for="productUrl">Добавить карточку товара</label>
+              <div class="input-row">
+                <input id="productUrl" name="productUrl" type="url" placeholder="https://www.wildberries.ru/catalog/..." autocomplete="url" required>
+                <button type="submit">Добавить</button>
+              </div>
+            </form>
+            <div class="marketplaces" aria-label="Поддерживаемые площадки">
+              <span>Wildberries</span>
+              <span>Ozon</span>
+              <span>Яндекс Маркет</span>
+              <span>AliExpress</span>
+            </div>
+            <p class="note" id="addProductNote">Для регулярного мониторинга товар должен быть сохранён в репозитории. Добавление на странице создаёт локальный черновик.</p>
+          </section>
+        </section>
       </header>
 
-      <section class="toolbar" aria-label="Добавление товара">
-        <form id="addProductForm">
-          <label for="productUrl">Ссылка на карточку товара</label>
-          <div class="input-row">
-            <input id="productUrl" name="productUrl" type="url" placeholder="https://example.com/product" autocomplete="url" required>
-            <button type="submit">Добавить</button>
-          </div>
-        </form>
-        <p class="note" id="addProductNote">
-          В первой версии форма готовит запись для `data/products.json`; сохранение в репозиторий выполняется через commit.
-        </p>
-      </section>
-
-      <section class="layout">
+      <section class="dashboard">
         <aside class="product-list" aria-label="Отслеживаемые товары">
           <div class="section-heading">
-            <h2>Товары</h2>
+            <div>
+              <p class="kicker">watchlist</p>
+              <h2>Товары</h2>
+            </div>
             <span id="productCount">0</span>
           </div>
-          <div id="products"></div>
+          <div id="products" class="product-stack"></div>
         </aside>
 
         <section class="details" aria-live="polite">
           <div id="emptyState" class="empty-state">
-            <h2>Нет выбранного товара</h2>
-            <p>Добавьте ссылку в `data/products.json` или выберите товар из списка.</p>
+            <h2>Выберите товар</h2>
+            <p>Как только появятся наблюдения, здесь будет график, минимум и таблица изменений.</p>
           </div>
 
           <article id="productDetails" class="product-details hidden">
@@ -54,7 +71,7 @@
             </div>
 
             <div class="metrics">
-              <div class="metric">
+              <div class="metric primary">
                 <span>Текущая цена</span>
                 <strong id="currentPrice">-</strong>
               </div>
@@ -72,7 +89,13 @@
               </div>
             </div>
 
-            <div class="chart-wrap">
+            <div id="draftPanel" class="draft-panel hidden"></div>
+
+            <div class="chart-card">
+              <div class="chart-title">
+                <h3>Динамика цены</h3>
+                <span id="chartCaption">-</span>
+              </div>
               <canvas id="priceChart" width="1000" height="420" aria-label="График изменения цены"></canvas>
             </div>
 
@@ -82,7 +105,7 @@
                   <tr>
                     <th>Дата</th>
                     <th>Цена</th>
-                    <th>Статус</th>
+                    <th>Источник</th>
                   </tr>
                 </thead>
                 <tbody id="historyRows"></tbody>
