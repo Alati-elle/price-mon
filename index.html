@@ -8,111 +8,45 @@
   </head>
   <body>
     <main class="app-shell">
-      <header class="hero">
-        <nav class="navline" aria-label="Статус сервиса">
-          <a class="brand" href="./" aria-label="Price Monitor">
-            <span class="brand-mark">PM</span>
-            <span>Price Monitor</span>
-          </a>
-          <div class="status-pill" id="dataStatus">Загрузка</div>
-        </nav>
-
-        <section class="hero-grid">
-          <div class="hero-copy">
-            <p class="kicker">Личный радар цен</p>
-            <h1>Следим за карточками, ловим лучший момент для покупки.</h1>
-            <p>WB, Ozon, Яндекс Маркет и AliExpress в одной аккуратной витрине: текущая цена, история и день минимума.</p>
-          </div>
-
-          <section class="add-panel" aria-label="Добавление товара">
-            <form id="addProductForm">
-              <label for="productUrl">Добавить карточку товара</label>
-              <div class="input-row">
-                <input id="productUrl" name="productUrl" type="url" placeholder="https://www.wildberries.ru/catalog/..." autocomplete="url" required>
-                <button type="submit">Добавить</button>
-              </div>
-            </form>
-            <div class="marketplaces" aria-label="Поддерживаемые площадки">
-              <span>Wildberries</span>
-              <span>Ozon</span>
-              <span>Яндекс Маркет</span>
-              <span>AliExpress</span>
-            </div>
-            <p class="note" id="addProductNote">Для регулярного мониторинга товар должен быть сохранён в репозитории. Добавление на странице создаёт локальный черновик.</p>
-          </section>
-        </section>
+      <header class="topbar">
+        <div>
+          <h1>Price Monitor</h1>
+          <p>Минималистичная таблица наблюдения за ценами</p>
+        </div>
+        <div class="status-pill" id="dataStatus">Загрузка</div>
       </header>
 
-      <section class="dashboard">
-        <aside class="product-list" aria-label="Отслеживаемые товары">
-          <div class="section-heading">
-            <div>
-              <p class="kicker">watchlist</p>
-              <h2>Товары</h2>
-            </div>
-            <span id="productCount">0</span>
+      <section class="add-strip" aria-label="Добавление товара">
+        <form id="addProductForm">
+          <label for="productUrl">Новая карточка</label>
+          <div class="input-row">
+            <input id="productUrl" name="productUrl" type="url" placeholder="Вставьте ссылку на товар" autocomplete="url" required>
+            <button type="submit">Добавить</button>
           </div>
-          <div id="products" class="product-stack"></div>
-        </aside>
+        </form>
+        <p class="note" id="addProductNote">Добавление на странице создаёт локальный черновик. Для регулярного мониторинга товар должен быть сохранён в репозитории.</p>
+      </section>
 
-        <section class="details" aria-live="polite">
-          <div id="emptyState" class="empty-state">
-            <h2>Выберите товар</h2>
-            <p>Как только появятся наблюдения, здесь будет график, минимум и таблица изменений.</p>
+      <section class="table-panel" aria-label="Таблица цен">
+        <div class="table-headline">
+          <div>
+            <h2>Товары</h2>
+            <p id="tableSummary">Загрузка наблюдений</p>
           </div>
+          <div class="marketplaces" aria-label="Поддерживаемые площадки">
+            <span>WB</span>
+            <span>Ozon</span>
+            <span>Маркет</span>
+            <span>AliExpress</span>
+          </div>
+        </div>
 
-          <article id="productDetails" class="product-details hidden">
-            <div class="details-header">
-              <div>
-                <p class="eyebrow" id="storeName"></p>
-                <h2 id="productTitle"></h2>
-              </div>
-              <a id="productLink" class="external-link" href="#" target="_blank" rel="noreferrer">Открыть</a>
-            </div>
-
-            <div class="metrics">
-              <div class="metric primary">
-                <span>Текущая цена</span>
-                <strong id="currentPrice">-</strong>
-              </div>
-              <div class="metric best">
-                <span>Минимум</span>
-                <strong id="minPrice">-</strong>
-              </div>
-              <div class="metric">
-                <span>Наблюдений</span>
-                <strong id="observationCount">0</strong>
-              </div>
-              <div class="metric">
-                <span>Обновлено</span>
-                <strong id="updatedAt">-</strong>
-              </div>
-            </div>
-
-            <div id="draftPanel" class="draft-panel hidden"></div>
-
-            <div class="chart-card">
-              <div class="chart-title">
-                <h3>Динамика цены</h3>
-                <span id="chartCaption">-</span>
-              </div>
-              <canvas id="priceChart" width="1000" height="420" aria-label="График изменения цены"></canvas>
-            </div>
-
-            <div class="history-table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Дата</th>
-                    <th>Цена</th>
-                    <th>Источник</th>
-                  </tr>
-                </thead>
-                <tbody id="historyRows"></tbody>
-              </table>
-            </div>
-          </article>
-        </section>
+        <div class="price-table-wrap">
+          <table class="price-table">
+            <thead id="priceTableHead"></thead>
+            <tbody id="priceTableBody"></tbody>
+          </table>
+        </div>
       </section>
     </main>
 
