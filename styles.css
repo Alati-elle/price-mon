@@ -99,7 +99,7 @@ a { color: inherit; }
 
 .add-form {
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) 170px auto;
+  grid-template-columns: minmax(260px, 1fr) auto;
   gap: 8px;
   align-items: end;
 }
