@@ -21,5 +21,15 @@
       "status": "ok",
       "message": "demo"
     }
+  ],
+  "wb-768952004": [
+    {
+      "checked_at": "2026-08-29T08:36:14Z",
+      "price": 1464,
+      "currency": "RUB",
+      "status": "ok",
+      "message": "wildberries-api",
+      "title": "SELA Джинсы на резинке со средней посадкой свободные"
+    }
   ]
 }
