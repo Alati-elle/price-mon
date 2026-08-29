@@ -19,6 +19,7 @@ const els = {
   addProductButton: document.querySelector("#addProductButton"),
   productUrl: document.querySelector("#productUrl"),
   addProductNote: document.querySelector("#addProductNote"),
+  refreshButton: document.querySelector("#refreshButton"),
 };
 
 function apiBase() {
@@ -395,6 +396,23 @@ async function addProduct(url) {
   return payload;
 }
 
+async function refreshPrices() {
+  const endpoint = apiUrl("/api/refresh");
+  if (!endpoint) {
+    window.open("https://github.com/Alati-elle/price-mon/actions/workflows/update-prices.yml", "_blank", "noreferrer");
+    setNote("Открыла ручной запуск обновления в GitHub Actions.");
+    return;
+  }
+
+  const response = await fetch(endpoint, { method: "POST" });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    window.open("https://github.com/Alati-elle/price-mon/actions/workflows/update-prices.yml", "_blank", "noreferrer");
+    throw new Error(payload.error || "Открыла ручной запуск в GitHub Actions");
+  }
+  setNote("Ручное обновление запущено. Данные появятся после завершения workflow.", "success");
+}
+
 async function loadData() {
   try {
     const stateEndpoint = apiUrl("/api/state");
@@ -421,6 +439,19 @@ async function loadData() {
     els.priceTableBody.append(emptyRow(DAY_COUNT + 1, error.message));
   }
 }
+
+els.refreshButton.addEventListener("click", async () => {
+  els.refreshButton.disabled = true;
+  els.refreshButton.textContent = "Запускаю";
+  try {
+    await refreshPrices();
+  } catch (error) {
+    setNote(error.message, "error");
+  } finally {
+    els.refreshButton.disabled = false;
+    els.refreshButton.textContent = "Обновить цены";
+  }
+});
 
 els.addProductForm.addEventListener("submit", async (event) => {
   event.preventDefault();
