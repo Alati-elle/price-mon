@@ -29,7 +29,8 @@
       "currency": "RUB",
       "status": "ok",
       "message": "wildberries-api",
-      "title": "SELA Джинсы на резинке со средней посадкой свободные"
+      "title": "SELA Джинсы на резинке со средней посадкой свободные",
+      "image_url": "https://basket-36.wbbasket.ru/vol7689/part768952/768952004/images/big/1.webp"
     },
     {
       "checked_at": "2026-08-29T17:43:39Z",
@@ -37,7 +38,8 @@
       "currency": "RUB",
       "status": "ok",
       "message": "wildberries-api",
-      "title": "SELA Джинсы на резинке со средней посадкой свободные"
+      "title": "SELA Джинсы на резинке со средней посадкой свободные",
+      "image_url": "https://basket-36.wbbasket.ru/vol7689/part768952/768952004/images/big/1.webp"
     },
     {
       "checked_at": "2026-08-29T19:33:45Z",
@@ -45,7 +47,8 @@
       "currency": "RUB",
       "status": "ok",
       "message": "wildberries-api",
-      "title": "SELA Джинсы на резинке со средней посадкой свободные"
+      "title": "SELA Джинсы на резинке со средней посадкой свободные",
+      "image_url": "https://basket-36.wbbasket.ru/vol7689/part768952/768952004/images/big/1.webp"
     },
     {
       "checked_at": "2026-08-29T20:09:17Z",
@@ -53,7 +56,8 @@
       "currency": "RUB",
       "status": "ok",
       "message": "wildberries-api",
-      "title": "SELA Джинсы на резинке со средней посадкой свободные"
+      "title": "SELA Джинсы на резинке со средней посадкой свободные",
+      "image_url": "https://basket-36.wbbasket.ru/vol7689/part768952/768952004/images/big/1.webp"
     }
   ],
   "ali-click-30f3a528ee": [
@@ -62,28 +66,32 @@
       "price": null,
       "currency": "RUB",
       "status": "error",
-      "message": "HTTP Error 302: The HTTP server returned a redirect error that would lead to an infinite loop.\nThe last 30x error message was:\nFound"
+      "message": "HTTP Error 302: The HTTP server returned a redirect error that would lead to an infinite loop.\nThe last 30x error message was:\nFound",
+      "resolved_url": "https://aliexpress.ru/aff/redirect/bm1ik1y"
     },
     {
       "checked_at": "2026-08-29T17:43:39Z",
       "price": null,
       "currency": "RUB",
       "status": "error",
-      "message": "HTTP Error 302: The HTTP server returned a redirect error that would lead to an infinite loop.\nThe last 30x error message was:\nFound"
+      "message": "HTTP Error 302: The HTTP server returned a redirect error that would lead to an infinite loop.\nThe last 30x error message was:\nFound",
+      "resolved_url": "https://aliexpress.ru/aff/redirect/bm1ik1y"
     },
     {
       "checked_at": "2026-08-29T19:33:45Z",
       "price": null,
       "currency": "RUB",
       "status": "error",
-      "message": "HTTP Error 302: The HTTP server returned a redirect error that would lead to an infinite loop.\nThe last 30x error message was:\nFound"
+      "message": "HTTP Error 302: The HTTP server returned a redirect error that would lead to an infinite loop.\nThe last 30x error message was:\nFound",
+      "resolved_url": "https://aliexpress.ru/aff/redirect/bm1ik1y"
     },
     {
       "checked_at": "2026-08-29T20:09:17Z",
       "price": null,
       "currency": "RUB",
       "status": "error",
-      "message": "HTTP Error 302: The HTTP server returned a redirect error that would lead to an infinite loop.\nThe last 30x error message was:\nFound"
+      "message": "HTTP Error 302: The HTTP server returned a redirect error that would lead to an infinite loop.\nThe last 30x error message was:\nFound",
+      "resolved_url": "https://aliexpress.ru/aff/redirect/bm1ik1y"
     }
   ],
   "ozon-ru-45f39888": [
