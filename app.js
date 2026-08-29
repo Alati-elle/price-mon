@@ -33,7 +33,7 @@ function detectMarketplace(url) {
   if (host.endsWith("wildberries.ru") || host.endsWith("wb.ru")) return "wildberries";
   if (host.endsWith("ozon.ru")) return "ozon";
   if (host.endsWith("market.yandex.ru")) return "yandex_market";
-  if (host.endsWith("aliexpress.ru") || host.endsWith("aliexpress.com")) return "aliexpress";
+  if (host.endsWith("aliexpress.ru") || host.endsWith("aliexpress.com") || host.endsWith("ali.click")) return "aliexpress";
   return "generic";
 }
 
@@ -163,6 +163,14 @@ function displayTitle(product, history) {
   return fromHistory || product.title || product.url;
 }
 
+function displayImage(product, history) {
+  return product.image_url || [...history].reverse().find((item) => item.image_url)?.image_url || "";
+}
+
+function productLink(product) {
+  return product.resolved_url || product.url;
+}
+
 function priceByDay(history) {
   const map = new Map();
   history.forEach((item) => {
@@ -207,6 +215,7 @@ function renderTable() {
     const host = new URL(product.url).hostname.replace(/^www\./, "");
     const marketplace = product.marketplace || detectMarketplace(product.url);
     const title = displayTitle(product, history);
+    const imageUrl = displayImage(product, history);
     const isExpanded = state.expandedProductId === product.id;
     const statusLabel = product.active === false ? "пауза" : marketplaceLabel(marketplace);
 
@@ -217,8 +226,11 @@ function renderTable() {
       <td>
         <div class="product-cell">
           <span class="chevron" aria-hidden="true">${isExpanded ? "▾" : "▸"}</span>
+          <a class="thumb-link" href="${escapeHtml(productLink(product))}" target="_blank" rel="noreferrer" aria-label="Открыть карточку товара" onclick="event.stopPropagation()">
+            ${imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="">` : `<span>${escapeHtml(marketplaceLabel(marketplace).slice(0, 2))}</span>`}
+          </a>
           <div>
-            <span class="product-name">${escapeHtml(title)}</span>
+            <a class="product-name" href="${escapeHtml(productLink(product))}" target="_blank" rel="noreferrer" onclick="event.stopPropagation()">${escapeHtml(title)}</a>
             <span class="product-subline">
               <span>${escapeHtml(host)}</span>
               <span class="badge">${escapeHtml(statusLabel)}</span>
@@ -271,7 +283,7 @@ function detailTemplate(product, history, latest, best, colspan) {
           <div class="metric best"><span>Минимум</span><strong>${escapeHtml(best ? formatPrice(best.price, best.currency || currency) : "-")}</strong></div>
           <div class="metric"><span>Точек</span><strong>${history.length}</strong></div>
           <div class="metric"><span>Обновлено</span><strong>${escapeHtml(latest ? formatDateTime(latest.checked_at) : "-")}</strong></div>
-          <a class="open-link" href="${escapeHtml(product.url)}" target="_blank" rel="noreferrer">Открыть</a>
+          <a class="open-link" href="${escapeHtml(productLink(product))}" target="_blank" rel="noreferrer">Открыть</a>
         </div>
       </div>
     </td>
