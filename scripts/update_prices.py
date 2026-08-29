@@ -6,9 +6,11 @@ import re
 import sys
 import urllib.error
 import urllib.request
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
+from urllib.parse import urlparse
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -28,6 +30,21 @@ CURRENCY_BY_SYMBOL = {
     "€": "EUR",
     "£": "GBP",
 }
+
+MARKETPLACE_HOSTS = {
+    "wildberries": ("wildberries.ru", "wb.ru"),
+    "ozon": ("ozon.ru",),
+    "yandex_market": ("market.yandex.ru",),
+    "aliexpress": ("aliexpress.ru", "aliexpress.com"),
+}
+
+
+@dataclass
+class PriceResult:
+    price: float | int | None
+    currency: str
+    title: str | None = None
+    source: str = "html"
 
 
 def load_json(path, default):
@@ -56,6 +73,20 @@ def fetch_html(url):
     with urllib.request.urlopen(request, timeout=30) as response:
         charset = response.headers.get_content_charset() or "utf-8"
         return response.read().decode(charset, errors="replace")
+
+
+def fetch_json(url):
+    request = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": USER_AGENT,
+            "Accept": "application/json,text/plain,*/*",
+            "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
+        },
+    )
+    with urllib.request.urlopen(request, timeout=30) as response:
+        charset = response.headers.get_content_charset() or "utf-8"
+        return json.loads(response.read().decode(charset, errors="replace"))
 
 
 def compact_text(value):
@@ -98,6 +129,31 @@ def normalize_price(value):
     if abs(value - round(value)) < 0.001:
         return int(round(value))
     return round(value, 2)
+
+
+def detect_marketplace(url):
+    host = urlparse(url).hostname or ""
+    host = host.lower().removeprefix("www.")
+    for marketplace, hosts in MARKETPLACE_HOSTS.items():
+        if any(host == item or host.endswith("." + item) for item in hosts):
+            return marketplace
+    return "generic"
+
+
+def extract_title_from_meta(page):
+    patterns = [
+        r'<meta[^>]+property=["\']og:title["\'][^>]+content=["\']([^"\']+)["\']',
+        r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:title["\']',
+        r"<title[^>]*>(.*?)</title>",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, page, re.IGNORECASE | re.DOTALL)
+        if match:
+            title = compact_text(match.group(1))
+            title = re.sub(r"\s+[|–-]\s+.*$", "", title).strip()
+            if title:
+                return title
+    return None
 
 
 def find_json_ld_objects(page):
@@ -148,9 +204,10 @@ def price_from_json_ld(page):
                 continue
 
             currency = item.get("priceCurrency") or item.get("currency")
-            return normalize_price(price), str(currency or "").upper() or None
+            title = item.get("name") or extract_title_from_meta(page)
+            return normalize_price(price), str(currency or "").upper() or None, title
 
-    return None, None
+    return None, None, None
 
 
 def price_from_meta(page):
@@ -179,7 +236,7 @@ def price_from_meta(page):
             currency = compact_text(match.group(1)).upper()
             break
 
-    return normalize_price(price), currency
+    return normalize_price(price), currency, extract_title_from_meta(page)
 
 
 def price_from_text(page):
@@ -198,42 +255,134 @@ def price_from_text(page):
         candidates.append((price, currency))
 
     if not candidates:
-        return None, None
+        return None, None, None
 
     candidates.sort(key=lambda item: item[0])
     price, currency = candidates[0]
-    return normalize_price(price), currency
+    return normalize_price(price), currency, extract_title_from_meta(page)
 
 
 def extract_price(page, fallback_currency):
     for extractor in (price_from_json_ld, price_from_meta, price_from_text):
-        price, currency = extractor(page)
+        price, currency, title = extractor(page)
         if price is not None:
-            return price, currency or fallback_currency or "RUB"
-    return None, fallback_currency or "RUB"
+            return PriceResult(price, currency or fallback_currency or "RUB", title)
+    return PriceResult(None, fallback_currency or "RUB", extract_title_from_meta(page))
+
+
+def extract_wb_article(url):
+    match = re.search(r"/catalog/(\d+)", url)
+    if match:
+        return match.group(1)
+    match = re.search(r"\b(?:nm|card)=(\d+)", url)
+    return match.group(1) if match else None
+
+
+def parse_wb_price(url, fallback_currency):
+    article = extract_wb_article(url)
+    if not article:
+        return PriceResult(None, fallback_currency or "RUB", source="wildberries-api")
+
+    endpoint = f"https://card.wb.ru/cards/v4/detail?appType=1&curr=rub&dest=-1257786&spp=30&nm={article}"
+    data = fetch_json(endpoint)
+    products = data.get("data", {}).get("products") or data.get("products", [])
+    if not products:
+        return PriceResult(None, fallback_currency or "RUB", source="wildberries-api")
+
+    item = products[0]
+    sizes = item.get("sizes") or []
+    prices = []
+    for size in sizes:
+        price_info = size.get("price") or {}
+        total = price_info.get("total")
+        product_part = price_info.get("product")
+        logistics_part = price_info.get("logistics")
+        if isinstance(total, (int, float)) and total > 0:
+            prices.append(total / 100)
+        elif isinstance(product_part, (int, float)) and product_part > 0:
+            logistics = logistics_part if isinstance(logistics_part, (int, float)) else 0
+            prices.append((product_part + logistics) / 100)
+        else:
+            basic = price_info.get("basic")
+            if isinstance(basic, (int, float)) and basic > 0:
+                prices.append(basic / 100)
+
+    direct_price = item.get("salePriceU") or item.get("priceU")
+    if isinstance(direct_price, (int, float)) and direct_price > 0:
+        prices.append(direct_price / 100)
+
+    price = min(prices) if prices else None
+    title = compact_text(" ".join(part for part in [item.get("brand"), item.get("name")] if part))
+    return PriceResult(normalize_price(price), "RUB", title or None, "wildberries-api")
+
+
+def parse_embedded_json_price(page, fallback_currency, marketplace):
+    candidates = []
+    title = extract_title_from_meta(page)
+    patterns = [
+        r'"(?:price|finalPrice|currentPrice|salePrice|discountPrice)"\s*:\s*"?(\d[\d\s.,]*)"?',
+        r'"(?:priceValue|value)"\s*:\s*"?(\d[\d\s.,]*)"?\s*,\s*"(?:currency|priceCurrency)"\s*:\s*"([A-Z]{3})"',
+    ]
+    for pattern in patterns:
+        for match in re.finditer(pattern, page, re.IGNORECASE):
+            price = parse_number(match.group(1))
+            if price is None:
+                continue
+            currency = match.group(2).upper() if len(match.groups()) > 1 and match.group(2) else fallback_currency or "RUB"
+            if marketplace == "aliexpress" and price > 10_000_000:
+                price = price / 100
+            candidates.append((price, currency))
+
+    if not candidates:
+        return PriceResult(None, fallback_currency or "RUB", title, f"{marketplace}-embedded-json")
+
+    candidates.sort(key=lambda item: item[0])
+    price, currency = candidates[0]
+    return PriceResult(normalize_price(price), currency, title, f"{marketplace}-embedded-json")
+
+
+def parse_marketplace_price(product):
+    url = product["url"]
+    marketplace = product.get("marketplace") or detect_marketplace(url)
+    fallback_currency = product.get("currency", "RUB")
+
+    if marketplace == "wildberries":
+        result = parse_wb_price(url, fallback_currency)
+        if result.price is not None:
+            return result
+
+    page = fetch_html(url)
+    if marketplace in {"ozon", "yandex_market", "aliexpress"}:
+        result = parse_embedded_json_price(page, fallback_currency, marketplace)
+        if result.price is not None:
+            return result
+
+    result = extract_price(page, fallback_currency)
+    result.source = marketplace if marketplace != "generic" else result.source
+    return result
 
 
 def build_observation(product, checked_at):
     try:
-        page = fetch_html(product["url"])
-        price, currency = extract_price(page, product.get("currency"))
-        if price is None:
+        result = parse_marketplace_price(product)
+        if result.price is None:
             return {
                 "checked_at": checked_at,
                 "price": None,
-                "currency": product.get("currency", "RUB"),
+                "currency": result.currency,
                 "status": "error",
                 "message": "price not found",
             }
 
         return {
             "checked_at": checked_at,
-            "price": price,
-            "currency": currency,
+            "price": result.price,
+            "currency": result.currency,
             "status": "ok",
-            "message": "parsed",
+            "message": result.source,
+            "title": result.title,
         }
-    except (urllib.error.URLError, TimeoutError, KeyError) as exc:
+    except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError) as exc:
         return {
             "checked_at": checked_at,
             "price": None,
@@ -254,11 +403,15 @@ def update_prices(dry_run=False):
             continue
 
         observation = build_observation(product, checked_at)
+        if observation.get("title") and not product.get("title"):
+            product["title"] = observation["title"]
+        product.setdefault("marketplace", detect_marketplace(product["url"]))
         prices.setdefault(product["id"], []).append(observation)
         changed = True
         print(f"{product['id']}: {observation['status']} {observation.get('price')}")
 
     if changed and not dry_run:
+        save_json(PRODUCTS_PATH, products)
         save_json(PRICES_PATH, prices)
 
     return changed
