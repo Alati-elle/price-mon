@@ -22,14 +22,10 @@ const els = {
   refreshButton: document.querySelector("#refreshButton"),
 };
 
-function apiBase() {
-  return String(window.PRICE_MON_API_BASE || "").replace(/\/$/, "");
-}
+const GITHUB_ACTIONS_BASE = "https://github.com/Alati-elle/price-mon/actions/workflows";
 
-function apiUrl(path) {
-  const base = apiBase();
-  if (!base) return null;
-  return `${base}${path}`;
+function openWorkflow(workflowFile) {
+  window.open(`${GITHUB_ACTIONS_BASE}/${workflowFile}`, "_blank", "noreferrer");
 }
 
 function detectMarketplace(url) {
@@ -383,56 +379,24 @@ function setNote(message, type = "") {
 }
 
 async function addProduct(url) {
-  const endpoint = apiUrl("/api/products");
-  if (!endpoint) throw new Error("Backend API не подключён");
-
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url }),
-  });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(payload.error || "Backend не добавил товар");
-  return payload;
+  openWorkflow("add-product.yml");
+  setNote("Открыла GitHub Actions. Вставьте ссылку в поле product_url и нажмите Run workflow.", "success");
 }
 
 async function refreshPrices() {
-  const endpoint = apiUrl("/api/refresh");
-  if (!endpoint) {
-    window.open("https://github.com/Alati-elle/price-mon/actions/workflows/update-prices.yml", "_blank", "noreferrer");
-    setNote("Открыла ручной запуск обновления в GitHub Actions.");
-    return;
-  }
-
-  const response = await fetch(endpoint, { method: "POST" });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    window.open("https://github.com/Alati-elle/price-mon/actions/workflows/update-prices.yml", "_blank", "noreferrer");
-    setNote("Открыла ручной запуск обновления в GitHub Actions.");
-    return;
-  }
-  setNote("Ручное обновление запущено. Данные появятся после завершения workflow.", "success");
+  openWorkflow("update-prices.yml");
+  setNote("Открыла ручной запуск обновления цен в GitHub Actions.", "success");
 }
 
 async function loadData() {
   try {
-    const stateEndpoint = apiUrl("/api/state");
-    if (stateEndpoint) {
-      const response = await fetch(stateEndpoint, { cache: "no-store" });
-      if (response.ok) {
-        applyState(await response.json());
-        els.status.textContent = "API подключён";
-        return;
-      }
-    }
-
     const [productsResponse, pricesResponse] = await Promise.all([
       fetch("data/products.json", { cache: "no-store" }),
       fetch("data/prices.json", { cache: "no-store" }),
     ]);
     if (!productsResponse.ok || !pricesResponse.ok) throw new Error("Не удалось загрузить JSON");
     applyState({ products: await productsResponse.json(), prices: await pricesResponse.json() });
-    els.status.textContent = stateEndpoint ? "API недоступен" : "Только чтение";
+    els.status.textContent = "GitHub Actions";
   } catch (error) {
     els.status.textContent = "Ошибка данных";
     els.tableSummary.textContent = "Не удалось загрузить данные";
@@ -440,6 +404,7 @@ async function loadData() {
     els.priceTableBody.append(emptyRow(DAY_COUNT + 1, error.message));
   }
 }
+
 
 els.refreshButton.addEventListener("click", async () => {
   els.refreshButton.disabled = true;
@@ -467,14 +432,11 @@ els.addProductForm.addEventListener("submit", async (event) => {
   }
 
   els.addProductButton.disabled = true;
-  els.addProductButton.textContent = "Добавляю";
-  setNote("Добавляю товар через backend...");
+  els.addProductButton.textContent = "Открываю";
+  setNote("Открываю безопасный запуск через GitHub Actions...");
   try {
-    const payload = await addProduct(url);
-    applyState(payload);
-    els.productUrl.value = "";
-    setNote("Товар добавлен и сохранён.", "success");
-    els.status.textContent = "API подключён";
+    await addProduct(url);
+    await navigator.clipboard?.writeText(url).catch(() => {});
   } catch (error) {
     setNote(error.message, "error");
   } finally {
