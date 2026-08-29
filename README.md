@@ -1,40 +1,31 @@
 # Price Monitor
 
-Личный сервис для наблюдения за ценами на карточки товаров. Интерфейс остаётся статическим и публикуется через GitHub Pages, а добавление товаров выполняет отдельный backend API.
+Личный сервис для наблюдения за ценами на карточки товаров. Страница публикуется через GitHub Pages, а вся запись данных выполняется через GitHub Actions.
 
 ## Как устроено
 
 - `index.html`, `styles.css`, `app.js` - статический интерфейс таблицы цен.
-- `config.js` - адрес backend API для фронтенда.
 - `data/products.json` - список отслеживаемых карточек.
 - `data/prices.json` - история наблюдений.
+- `scripts/add_product.py` - добавление товара и первый замер цены.
 - `scripts/update_prices.py` - плановое обновление цен.
-- `worker/price-mon-worker.js` - backend API для добавления товара.
-- `.github/workflows/update-prices.yml` - запуск обновления в 00:01, 09:01 и 20:00 МСК.
-- `.github/workflows/deploy-worker.yml` - деплой Cloudflare Worker API.
+- `.github/workflows/add-product.yml` - ручное добавление товара по ссылке.
+- `.github/workflows/update-prices.yml` - обновление цен в 00:01, 09:01 и 20:00 МСК, плюс ручной запуск.
 - `.github/workflows/pages.yml` - публикация статической страницы на GitHub Pages.
 
-## Backend API
+## Добавление товара
 
-Фронтенд добавляет товар через `POST /api/products`.
+На сайте кнопка `Добавить` открывает workflow `Add product`. Вставьте ссылку в поле `product_url` и нажмите `Run workflow`. Workflow добавит карточку в `data/products.json`, сделает первый замер и закоммитит изменения.
 
-Worker валидирует ссылку, добавляет товар в `data/products.json`, делает первый замер для Wildberries через card API и атомарно коммитит `data/products.json` + `data/prices.json` через GitHub API.
+Это обходится без отдельного backend и без секретов в браузере. Прямой POST из GitHub Pages в репозиторий без внешнего backend невозможен безопасно: для записи нужен токен, а его нельзя хранить в публичном фронтенде.
 
-Для деплоя Worker нужны GitHub Secrets:
+## Ручное обновление цен
 
-- `CLOUDFLARE_API_TOKEN`
-- `CLOUDFLARE_ACCOUNT_ID`
+Кнопка `Обновить цены` открывает workflow `Update prices`, который можно запустить вручную. По расписанию он запускается автоматически:
 
-И Cloudflare Worker secrets:
-
-- `GITHUB_TOKEN` - GitHub token с правом писать в репозиторий.
-- `ADMIN_TOKEN` - серверный секрет backend endpoint, не поле пользовательской формы.
-
-После деплоя Worker укажите его адрес в `config.js`:
-
-```js
-window.PRICE_MON_API_BASE = "https://price-mon-api.<account>.workers.dev";
-```
+- 00:01 МСК
+- 09:01 МСК
+- 20:00 МСК
 
 ## Поддерживаемые площадки
 
@@ -44,8 +35,6 @@ window.PRICE_MON_API_BASE = "https://price-mon-api.<account>.workers.dev";
 - Ozon: встроенные JSON/meta-данные страницы и общий fallback.
 - Яндекс Маркет: встроенные JSON/meta-данные страницы и общий fallback.
 - AliExpress: встроенные JSON/meta-данные страницы и общий fallback.
-
-Worker при добавлении сразу делает первый замер для Wildberries. Для остальных площадок товар сохраняется, а цена подтягивается плановым обновлением.
 
 ## Локальная проверка
 
@@ -59,6 +48,12 @@ python3 -m http.server 8765
 
 ```bash
 python3 scripts/update_prices.py --dry-run
+```
+
+Проверить добавление товара локально:
+
+```bash
+python3 scripts/add_product.py "https://www.wildberries.ru/catalog/768952004/detail.aspx"
 ```
 
 ## GitHub Pages
