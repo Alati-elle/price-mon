@@ -151,13 +151,31 @@ function formatDateTime(value) {
   }).format(new Date(value)).replace(".", "");
 }
 
-function dateColumns() {
-  const now = Date.now();
+function relativeDayLabel(date) {
+  const key = formatMskDayKey(date);
+  const today = formatMskDayKey(new Date());
+  const yesterday = formatMskDayKey(new Date(Date.now() - 24 * 60 * 60 * 1000));
+  if (key === today) return "Сегодня";
+  if (key === yesterday) return "Вчера";
+  return formatDayLabel(date);
+}
+
+function latestObservationDate() {
+  const dates = Object.values(state.priceHistory)
+    .flat()
+    .filter((item) => typeof item.price === "number" && item.checked_at)
+    .map((item) => new Date(item.checked_at).getTime())
+    .filter((time) => Number.isFinite(time));
+  return new Date(dates.length ? Math.max(...dates) : Date.now());
+}
+
+function dateColumns(anchor = latestObservationDate()) {
+  const anchorTime = anchor.getTime();
   return Array.from({ length: DAY_COUNT }, (_, index) => {
-    const date = new Date(now - index * 24 * 60 * 60 * 1000);
+    const date = new Date(anchorTime - index * 24 * 60 * 60 * 1000);
     return {
       key: formatMskDayKey(date),
-      label: index === 0 ? "Сегодня" : index === 1 ? "Вчера" : formatDayLabel(date),
+      label: relativeDayLabel(date),
     };
   });
 }
@@ -204,7 +222,7 @@ function emptyRow(colspan, message) {
 }
 
 function renderTable() {
-  const columns = dateColumns();
+  const columns = dateColumns(latestObservationDate());
   els.priceTableHead.innerHTML = `
     <tr>
       <th scope="col">Товар</th>
@@ -220,7 +238,8 @@ function renderTable() {
   }
 
   const observedCount = Object.values(state.priceHistory).reduce((sum, history) => sum + history.length, 0);
-  els.tableSummary.textContent = `${state.products.length} товаров · ${observedCount} наблюдений · последние ${columns.length} дней`;
+  const anchorLabel = formatDayLabel(latestObservationDate());
+  els.tableSummary.textContent = `${state.products.length} товаров · ${observedCount} наблюдений · до ${anchorLabel}`;
 
   state.products.forEach((product) => {
     const history = productHistory(product.id);
