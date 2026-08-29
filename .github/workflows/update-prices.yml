@@ -1,0 +1,30 @@
+name: Update prices
+
+on:
+  schedule:
+    - cron: "0 8,14,20 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-prices:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Update prices
+        run: python scripts/update_prices.py
+
+      - name: Commit changed prices
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Update product prices"
+          file_pattern: data/prices.json
