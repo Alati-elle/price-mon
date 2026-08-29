@@ -85,6 +85,20 @@ a { color: inherit; }
   border-color: transparent !important;
 }
 
+.ghost-button {
+  height: 28px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--accent);
+  padding: 0 11px;
+  font-size: 12px;
+}
+
+.ghost-button:hover {
+  background: var(--accent-soft);
+}
+
 .control-bar,
 .sheet {
   border: 1px solid var(--line);
