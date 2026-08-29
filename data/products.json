@@ -10,21 +10,23 @@
   },
   {
     "id": "ali-click-30f3a528ee",
-    "title": "Другая площадка",
+    "title": "AliExpress · ali.click/bm1ik1y",
     "url": "https://ali.click/bm1ik1y",
     "store": "ali.click",
-    "marketplace": "generic",
+    "marketplace": "aliexpress",
     "currency": "RUB",
-    "active": true
+    "active": true,
+    "resolved_url": "https://aliexpress.ru/aff/redirect/bm1ik1y"
   },
   {
     "id": "wb-768952004",
-    "title": "Wildberries · 768952004",
+    "title": "SELA Джинсы на резинке со средней посадкой свободные",
     "url": "https://www.wildberries.ru/catalog/768952004/detail.aspx",
     "store": "wildberries.ru",
     "marketplace": "wildberries",
     "currency": "RUB",
-    "active": true
+    "active": true,
+    "image_url": "https://basket-36.wbbasket.ru/vol7689/part768952/768952004/images/big/1.webp"
   },
   {
     "id": "demo-keyboard",
