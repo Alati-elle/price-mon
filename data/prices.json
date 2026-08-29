@@ -67,6 +67,15 @@
       "message": "wildberries-out-of-stock",
       "title": "SELA Джинсы на резинке со средней посадкой свободные",
       "image_url": "https://basket-36.wbbasket.ru/vol7689/part768952/768952004/images/big/1.webp"
+    },
+    {
+      "checked_at": "2026-08-29T23:10:26Z",
+      "price": null,
+      "currency": "RUB",
+      "status": "error",
+      "message": "wildberries-out-of-stock",
+      "title": "SELA Джинсы на резинке со средней посадкой свободные",
+      "image_url": "https://basket-36.wbbasket.ru/vol7689/part768952/768952004/images/big/1.webp"
     }
   ],
   "ali-click-30f3a528ee": [
@@ -109,6 +118,14 @@
       "status": "error",
       "message": "aliexpress",
       "resolved_url": "https://aliexpress.ru/aff/redirect/bm1ik1y"
+    },
+    {
+      "checked_at": "2026-08-29T23:10:26Z",
+      "price": null,
+      "currency": "RUB",
+      "status": "error",
+      "message": "aliexpress",
+      "resolved_url": "https://aliexpress.ru/aff/redirect/bm1ik1y"
     }
   ],
   "ozon-ru-45f39888": [
@@ -128,6 +145,13 @@
     },
     {
       "checked_at": "2026-08-29T21:02:39Z",
+      "price": null,
+      "currency": "RUB",
+      "status": "error",
+      "message": "HTTP Error 403: Forbidden"
+    },
+    {
+      "checked_at": "2026-08-29T23:10:26Z",
       "price": null,
       "currency": "RUB",
       "status": "error",
