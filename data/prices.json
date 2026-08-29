@@ -46,6 +46,14 @@
       "status": "ok",
       "message": "wildberries-api",
       "title": "SELA Джинсы на резинке со средней посадкой свободные"
+    },
+    {
+      "checked_at": "2026-08-29T20:09:17Z",
+      "price": 1464,
+      "currency": "RUB",
+      "status": "ok",
+      "message": "wildberries-api",
+      "title": "SELA Джинсы на резинке со средней посадкой свободные"
     }
   ],
   "ali-click-30f3a528ee": [
@@ -69,11 +77,25 @@
       "currency": "RUB",
       "status": "error",
       "message": "HTTP Error 302: The HTTP server returned a redirect error that would lead to an infinite loop.\nThe last 30x error message was:\nFound"
+    },
+    {
+      "checked_at": "2026-08-29T20:09:17Z",
+      "price": null,
+      "currency": "RUB",
+      "status": "error",
+      "message": "HTTP Error 302: The HTTP server returned a redirect error that would lead to an infinite loop.\nThe last 30x error message was:\nFound"
     }
   ],
   "ozon-ru-45f39888": [
     {
       "checked_at": "2026-08-29T20:05:15Z",
+      "price": null,
+      "currency": "RUB",
+      "status": "error",
+      "message": "HTTP Error 403: Forbidden"
+    },
+    {
+      "checked_at": "2026-08-29T20:09:17Z",
       "price": null,
       "currency": "RUB",
       "status": "error",
