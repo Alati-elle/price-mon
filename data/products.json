@@ -1,9 +1,19 @@
 [
   {
+    "id": "wb-768952004",
+    "title": "Wildberries · 768952004",
+    "url": "https://www.wildberries.ru/catalog/768952004/detail.aspx",
+    "store": "wildberries.ru",
+    "marketplace": "wildberries",
+    "currency": "RUB",
+    "active": true
+  },
+  {
     "id": "demo-keyboard",
     "title": "Демо-товар: клавиатура",
     "url": "https://example.com/product/demo-keyboard",
     "store": "example.com",
+    "marketplace": "generic",
     "currency": "RUB",
     "active": false
   }
