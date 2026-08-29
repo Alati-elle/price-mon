@@ -2,10 +2,6 @@ name: Deploy API Worker
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - "worker/**"
-      - ".github/workflows/deploy-worker.yml"
 
 jobs:
   deploy-worker:
