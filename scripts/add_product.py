@@ -80,6 +80,11 @@ def add_product(url):
         product.setdefault("currency", "RUB")
 
     observation = build_observation(product, checked_at)
+    if observation.get("resolved_url"):
+        product["resolved_url"] = observation["resolved_url"]
+        product["marketplace"] = detect_marketplace(observation["resolved_url"])
+    if observation.get("image_url"):
+        product["image_url"] = observation["image_url"]
     if observation.get("currency"):
         product["currency"] = observation["currency"]
     if observation.get("title"):
