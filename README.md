@@ -1,45 +1,51 @@
 # Price Monitor
 
-Минимальная версия личного сервиса для наблюдения за ценами. Страница работает на GitHub Pages, а история цен хранится в JSON-файлах репозитория.
+Личный сервис для наблюдения за ценами на карточки товаров. Интерфейс остаётся статическим и публикуется через GitHub Pages, а добавление товаров выполняет отдельный backend API.
 
 ## Как устроено
 
-- `index.html`, `styles.css`, `app.js` - статический интерфейс.
+- `index.html`, `styles.css`, `app.js` - статический интерфейс таблицы цен.
+- `config.js` - адрес backend API для фронтенда.
 - `data/products.json` - список отслеживаемых карточек.
 - `data/prices.json` - история наблюдений.
-- `scripts/update_prices.py` - обновление цен.
+- `scripts/update_prices.py` - плановое обновление цен.
+- `worker/price-mon-worker.js` - backend API для добавления товара.
 - `.github/workflows/update-prices.yml` - запуск обновления в 00:01, 09:01 и 20:00 МСК.
+- `.github/workflows/deploy-worker.yml` - деплой Cloudflare Worker API.
 - `.github/workflows/pages.yml` - публикация статической страницы на GitHub Pages.
+
+## Backend API
+
+Фронтенд добавляет товар через `POST /api/products`.
+
+Worker проверяет `Authorization: Bearer <ADMIN_TOKEN>`, валидирует ссылку, добавляет товар в `data/products.json`, делает первый замер для Wildberries через card API и атомарно коммитит `data/products.json` + `data/prices.json` через GitHub API.
+
+Для деплоя Worker нужны GitHub Secrets:
+
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ACCOUNT_ID`
+
+И Cloudflare Worker secrets:
+
+- `GITHUB_TOKEN` - GitHub token с правом писать в репозиторий.
+- `ADMIN_TOKEN` - личный ключ для формы добавления товара.
+
+После деплоя Worker укажите его адрес в `config.js`:
+
+```js
+window.PRICE_MON_API_BASE = "https://price-mon-api.<account>.workers.dev";
+```
 
 ## Поддерживаемые площадки
 
-Скрипт автоматически определяет площадку по ссылке:
+Плановый Python-обновлятор определяет площадку по ссылке:
 
-- Wildberries: чтение через публичный card API по артикулу из URL.
-- Ozon: поиск цены во встроенных JSON/meta-данных страницы, затем общий fallback.
-- Яндекс Маркет: поиск цены во встроенных JSON/meta-данных страницы, затем общий fallback.
-- AliExpress: поиск цены во встроенных JSON/meta-данных страницы, затем общий fallback.
+- Wildberries: публичный card API по артикулу из URL.
+- Ozon: встроенные JSON/meta-данные страницы и общий fallback.
+- Яндекс Маркет: встроенные JSON/meta-данные страницы и общий fallback.
+- AliExpress: встроенные JSON/meta-данные страницы и общий fallback.
 
-Некоторые площадки могут блокировать запросы GitHub Actions или отдавать цену только после JavaScript-рендера. Для таких карточек в следующих версиях стоит добавить Playwright или отдельные API-адаптеры.
-
-## Добавление товара
-
-Пока сохранение через интерфейс не пишет в GitHub. Для MVP добавьте запись в `data/products.json`:
-
-```json
-{
-  "id": "unique-product-id",
-  "title": "Название товара",
-  "url": "https://example.com/product",
-  "store": "example.com",
-  "currency": "RUB",
-  "active": true
-}
-```
-
-Поле `marketplace` можно не указывать: скрипт сам определит `wildberries`, `ozon`, `yandex_market`, `aliexpress` или `generic`.
-
-После commit workflow начнет собирать цену по расписанию. Демо-товар в репозитории оставлен неактивным, чтобы первый scheduled run не записывал ожидаемую ошибку по `example.com`.
+Worker при добавлении сразу делает первый замер для Wildberries. Для остальных площадок товар сохраняется, а цена подтягивается плановым обновлением.
 
 ## Локальная проверка
 
@@ -57,8 +63,6 @@ python3 scripts/update_prices.py --dry-run
 
 ## GitHub Pages
 
-В репозитории добавлен workflow деплоя Pages через GitHub Actions. Source настроен как `GitHub Actions`.
-
-После публикации страница будет доступна по адресу:
+Страница публикуется по адресу:
 
 `https://alati-elle.github.io/price-mon/`
