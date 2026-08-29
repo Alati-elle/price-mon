@@ -19,6 +19,7 @@ export default {
       if (url.pathname === "/api/health") return json({ ok: true }, 200, cors);
       if (url.pathname === "/api/state" && request.method === "GET") return json(await readState(env), 200, cors);
       if (url.pathname === "/api/products" && request.method === "POST") return json(await addProduct(request, env), 200, cors);
+      if (url.pathname === "/api/refresh" && request.method === "POST") return json(await refreshPrices(request, env), 202, cors);
       return json({ error: "Not found" }, 404, cors);
     } catch (error) {
       return json({ error: error.message || "Internal error" }, error.status || 500, cors);
@@ -147,6 +148,16 @@ async function commitFiles(env, files, message) {
     body: JSON.stringify({ sha: nextCommit.sha }),
   });
   return nextCommit.sha;
+}
+
+async function refreshPrices(request, env) {
+  requireAuth(request, env);
+  const { repository, branch } = githubConfig(env);
+  await githubFetch(env, "/actions/workflows/update-prices.yml/dispatches", {
+    method: "POST",
+    body: JSON.stringify({ ref: branch }),
+  });
+  return { ok: true, repository, branch };
 }
 
 async function addProduct(request, env) {
