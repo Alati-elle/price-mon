@@ -25,7 +25,9 @@ jobs:
           python-version: "3.12"
 
       - name: Add product
-        run: python scripts/add_product.py "${{ inputs.product_url }}"
+        env:
+          PRODUCT_URL: ${{ inputs.product_url }}
+        run: python scripts/add_product.py "$PRODUCT_URL"
 
       - name: Commit changed data
         uses: stefanzweifel/git-auto-commit-action@v5
