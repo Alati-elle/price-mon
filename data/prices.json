@@ -31,5 +31,14 @@
       "message": "wildberries-api",
       "title": "SELA Джинсы на резинке со средней посадкой свободные"
     }
+  ],
+  "ali-click-30f3a528ee": [
+    {
+      "checked_at": "2026-08-29T15:16:34Z",
+      "price": null,
+      "currency": "RUB",
+      "status": "error",
+      "message": "HTTP Error 302: The HTTP server returned a redirect error that would lead to an infinite loop.\nThe last 30x error message was:\nFound"
+    }
   ]
 }
