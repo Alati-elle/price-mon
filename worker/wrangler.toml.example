@@ -1,0 +1,12 @@
+name = "price-mon-api"
+main = "price-mon-worker.js"
+compatibility_date = "2026-08-29"
+
+[vars]
+GITHUB_REPOSITORY = "Alati-elle/price-mon"
+GITHUB_BRANCH = "main"
+ALLOWED_ORIGINS = "https://alati-elle.github.io"
+
+# Secrets:
+# wrangler secret put GITHUB_TOKEN
+# wrangler secret put ADMIN_TOKEN
