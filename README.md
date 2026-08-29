@@ -18,7 +18,7 @@
 
 Фронтенд добавляет товар через `POST /api/products`.
 
-Worker проверяет `Authorization: Bearer <ADMIN_TOKEN>`, валидирует ссылку, добавляет товар в `data/products.json`, делает первый замер для Wildberries через card API и атомарно коммитит `data/products.json` + `data/prices.json` через GitHub API.
+Worker валидирует ссылку, добавляет товар в `data/products.json`, делает первый замер для Wildberries через card API и атомарно коммитит `data/products.json` + `data/prices.json` через GitHub API.
 
 Для деплоя Worker нужны GitHub Secrets:
 
@@ -28,7 +28,7 @@ Worker проверяет `Authorization: Bearer <ADMIN_TOKEN>`, валидир�
 И Cloudflare Worker secrets:
 
 - `GITHUB_TOKEN` - GitHub token с правом писать в репозиторий.
-- `ADMIN_TOKEN` - личный ключ для формы добавления товара.
+- `ADMIN_TOKEN` - серверный секрет backend endpoint, не поле пользовательской формы.
 
 После деплоя Worker укажите его адрес в `config.js`:
 
