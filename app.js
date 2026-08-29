@@ -1,12 +1,10 @@
-const LOCAL_DRAFT_KEY = "price-monitor-drafts";
-const GITHUB_NEW_ISSUE_URL = "https://github.com/Alati-elle/price-mon/issues/new";
+const API_TOKEN_KEY = "price-monitor-api-token";
 const MSK_TIME_ZONE = "Europe/Moscow";
 const DAY_COUNT = 7;
 
 const state = {
   products: [],
   remoteProducts: [],
-  draftProducts: [],
   priceHistory: {},
   expandedProductId: null,
 };
@@ -19,9 +17,21 @@ const els = {
   priceTableBody: document.querySelector("#priceTableBody"),
   tableSummary: document.querySelector("#tableSummary"),
   addProductForm: document.querySelector("#addProductForm"),
+  addProductButton: document.querySelector("#addProductButton"),
   productUrl: document.querySelector("#productUrl"),
+  apiToken: document.querySelector("#apiToken"),
   addProductNote: document.querySelector("#addProductNote"),
 };
+
+function apiBase() {
+  return String(window.PRICE_MON_API_BASE || "").replace(/\/$/, "");
+}
+
+function apiUrl(path) {
+  const base = apiBase();
+  if (!base) return null;
+  return `${base}${path}`;
+}
 
 function detectMarketplace(url) {
   const host = new URL(url).hostname.replace(/^www\./, "").toLowerCase();
@@ -52,57 +62,13 @@ function escapeHtml(value) {
   }[char]));
 }
 
-function productIdFromUrl(url) {
-  const parsed = new URL(url);
-  const wb = parsed.pathname.match(/\/catalog\/(\d+)/);
-  if (wb) return `wb-${wb[1]}`;
-  return `${parsed.hostname.replace(/^www\./, "").replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-${Date.now()}`;
-}
-
-function productIssueUrl(product) {
-  const title = `Добавить товар: ${product.store}`;
-  const body = [
-    "Пожалуйста, добавь товар в мониторинг цен.",
-    "",
-    `URL: ${product.url}`,
-    `Marketplace: ${product.marketplace}`,
-    `Currency: ${product.currency}`,
-  ].join("\n");
-  const params = new URLSearchParams({ title, body });
-  return `${GITHUB_NEW_ISSUE_URL}?${params.toString()}`;
-}
-
-function loadDrafts() {
-  try {
-    return JSON.parse(localStorage.getItem(LOCAL_DRAFT_KEY) || "[]");
-  } catch {
-    return [];
-  }
-}
-
-function saveDrafts(products) {
-  localStorage.setItem(LOCAL_DRAFT_KEY, JSON.stringify(products));
-}
-
-function mergeProducts() {
-  const seen = new Set();
-  state.products = [...state.remoteProducts, ...state.draftProducts].filter((product) => {
-    if (seen.has(product.id)) return false;
-    seen.add(product.id);
-    return true;
-  });
-}
-
 function getFormatter(currency = "RUB") {
   if (!currencyFormatters.has(currency)) {
-    currencyFormatters.set(
+    currencyFormatters.set(currency, new Intl.NumberFormat("ru-RU", {
+      style: "currency",
       currency,
-      new Intl.NumberFormat("ru-RU", {
-        style: "currency",
-        currency,
-        maximumFractionDigits: 0,
-      }),
-    );
+      maximumFractionDigits: 0,
+    }));
   }
   return currencyFormatters.get(currency);
 }
@@ -173,10 +139,7 @@ function dateColumns(anchor = latestObservationDate()) {
   const anchorTime = anchor.getTime();
   return Array.from({ length: DAY_COUNT }, (_, index) => {
     const date = new Date(anchorTime - index * 24 * 60 * 60 * 1000);
-    return {
-      key: formatMskDayKey(date),
-      label: relativeDayLabel(date),
-    };
+    return { key: formatMskDayKey(date), label: relativeDayLabel(date) };
   });
 }
 
@@ -238,8 +201,7 @@ function renderTable() {
   }
 
   const observedCount = Object.values(state.priceHistory).reduce((sum, history) => sum + history.length, 0);
-  const anchorLabel = formatDayLabel(latestObservationDate());
-  els.tableSummary.textContent = `${state.products.length} товаров · ${observedCount} наблюдений · до ${anchorLabel}`;
+  els.tableSummary.textContent = `${state.products.length} товаров · ${observedCount} наблюдений · до ${formatDayLabel(latestObservationDate())}`;
 
   state.products.forEach((product) => {
     const history = productHistory(product.id);
@@ -251,7 +213,7 @@ function renderTable() {
     const marketplace = product.marketplace || detectMarketplace(product.url);
     const title = displayTitle(product, history);
     const isExpanded = state.expandedProductId === product.id;
-    const statusLabel = product.pending ? "черновик" : product.active === false ? "пауза" : marketplaceLabel(marketplace);
+    const statusLabel = product.active === false ? "пауза" : marketplaceLabel(marketplace);
 
     const row = document.createElement("tr");
     row.className = `price-row ${isExpanded ? "expanded" : ""}`;
@@ -273,7 +235,7 @@ function renderTable() {
         const observation = byDay.get(day.key);
         const isBest = observation && best && observation.checked_at === best.checked_at && observation.price === best.price;
         const classes = `price-value ${observation ? "" : "missing"} ${isBest ? "best" : ""}`.trim();
-        return `<td><span class="${classes}">${escapeHtml(observation ? formatShortPrice(observation.price, observation.currency || product.currency) : "—")}</span></td>`;
+        return `<td><span class="${classes}">${escapeHtml(observation ? formatShortPrice(observation.price, observation.currency || product.currency) : "-")}</span></td>`;
       }).join("")}
     `;
     row.addEventListener("click", () => toggleProduct(product.id));
@@ -299,9 +261,6 @@ function renderTable() {
 function detailTemplate(product, history, latest, best, colspan) {
   const currency = latest?.currency || product.currency || "RUB";
   const title = displayTitle(product, history);
-  const draftText = product.pending
-    ? "Товар добавлен локально. Для регулярного мониторинга отправьте заявку в GitHub."
-    : "";
   return `
     <td colspan="${colspan}">
       <div class="expanded-panel">
@@ -310,26 +269,13 @@ function detailTemplate(product, history, latest, best, colspan) {
             <h3>${escapeHtml(title)}</h3>
             <span>${history.length ? `${history.length} точек` : "ожидаем первое обновление"}</span>
           </div>
-          <canvas class="inline-chart" width="980" height="320" aria-label="График цены"></canvas>
-          ${draftText ? `<p class="draft-note">${escapeHtml(draftText)}</p>` : ""}
+          <canvas class="inline-chart" width="980" height="300" aria-label="График цены"></canvas>
         </div>
         <div class="detail-metrics">
-          <div class="metric">
-            <span>Текущая цена</span>
-            <strong>${escapeHtml(latest ? formatPrice(latest.price, currency) : "-")}</strong>
-          </div>
-          <div class="metric best">
-            <span>Минимум</span>
-            <strong>${escapeHtml(best ? formatPrice(best.price, best.currency || currency) : "-")}</strong>
-          </div>
-          <div class="metric">
-            <span>Наблюдений</span>
-            <strong>${history.length}</strong>
-          </div>
-          <div class="metric">
-            <span>Обновлено</span>
-            <strong>${escapeHtml(latest ? formatDateTime(latest.checked_at) : product.pending ? "Черновик" : "-")}</strong>
-          </div>
+          <div class="metric"><span>Сейчас</span><strong>${escapeHtml(latest ? formatPrice(latest.price, currency) : "-")}</strong></div>
+          <div class="metric best"><span>Минимум</span><strong>${escapeHtml(best ? formatPrice(best.price, best.currency || currency) : "-")}</strong></div>
+          <div class="metric"><span>Точек</span><strong>${history.length}</strong></div>
+          <div class="metric"><span>Обновлено</span><strong>${escapeHtml(latest ? formatDateTime(latest.checked_at) : "-")}</strong></div>
           <a class="open-link" href="${escapeHtml(product.url)}" target="_blank" rel="noreferrer">Открыть</a>
         </div>
       </div>
@@ -347,7 +293,7 @@ function drawChart(canvas, history, currency = "RUB") {
   const ctx = canvas.getContext("2d");
   const width = canvas.width;
   const height = canvas.height;
-  const padding = { top: 52, right: 36, bottom: 54, left: 78 };
+  const padding = { top: 48, right: 34, bottom: 46, left: 70 };
   const points = history.filter((item) => typeof item.price === "number");
 
   ctx.clearRect(0, 0, width, height);
@@ -355,8 +301,8 @@ function drawChart(canvas, history, currency = "RUB") {
   ctx.fillRect(0, 0, width, height);
 
   if (!points.length) {
-    ctx.fillStyle = "#727a70";
-    ctx.font = "22px Inter, sans-serif";
+    ctx.fillStyle = "#6f776d";
+    ctx.font = "18px Inter, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText("Ждём первое наблюдение", width / 2, height / 2);
@@ -372,7 +318,7 @@ function drawChart(canvas, history, currency = "RUB") {
   const x = (index) => padding.left + (points.length === 1 ? plotWidth / 2 : (plotWidth * index) / (points.length - 1));
   const y = (price) => padding.top + plotHeight - ((price - min) / span) * plotHeight;
 
-  ctx.strokeStyle = "rgba(31, 36, 31, 0.1)";
+  ctx.strokeStyle = "rgba(28, 33, 29, 0.1)";
   ctx.lineWidth = 1;
   ctx.beginPath();
   for (let i = 0; i <= 4; i += 1) {
@@ -382,12 +328,8 @@ function drawChart(canvas, history, currency = "RUB") {
   }
   ctx.stroke();
 
-  const gradient = ctx.createLinearGradient(padding.left, 0, width - padding.right, 0);
-  gradient.addColorStop(0, "#12796f");
-  gradient.addColorStop(1, "#d97706");
-
-  ctx.strokeStyle = gradient;
-  ctx.lineWidth = 4;
+  ctx.strokeStyle = "#10796f";
+  ctx.lineWidth = 3;
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
   ctx.beginPath();
@@ -404,56 +346,82 @@ function drawChart(canvas, history, currency = "RUB") {
     const px = x(index);
     const py = y(point.price);
     const isBest = best && point.checked_at === best.checked_at && point.price === best.price;
-
-    ctx.fillStyle = "#ffffff";
-    ctx.beginPath();
-    ctx.arc(px, py, isBest ? 8 : 6, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = isBest ? "#d97706" : "#12796f";
+    ctx.fillStyle = isBest ? "#a94f08" : "#10796f";
     ctx.beginPath();
     ctx.arc(px, py, isBest ? 5 : 4, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = isBest ? "#92400e" : "#485047";
-    ctx.font = "13px Inter, sans-serif";
+    ctx.fillStyle = isBest ? "#8a3d05" : "#4c554b";
+    ctx.font = "12px Inter, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "bottom";
-    ctx.fillText(formatShortPrice(point.price, currency), px, Math.max(18, py - 12));
+    ctx.fillText(formatShortPrice(point.price, currency), px, Math.max(16, py - 9));
   });
 
-  ctx.fillStyle = "#727a70";
-  ctx.font = "13px Inter, sans-serif";
+  ctx.fillStyle = "#6f776d";
+  ctx.font = "12px Inter, sans-serif";
   ctx.textAlign = "right";
   ctx.textBaseline = "middle";
-  [min, max].forEach((price) => {
-    ctx.fillText(formatShortPrice(price, currency), padding.left - 12, y(price));
-  });
+  [min, max].forEach((price) => ctx.fillText(formatShortPrice(price, currency), padding.left - 10, y(price)));
 
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
   const labelIndexes = [...new Set([0, Math.floor((points.length - 1) / 2), points.length - 1])];
-  labelIndexes.forEach((index) => {
-    ctx.fillText(formatDayLabel(new Date(points[index].checked_at)), x(index), height - 32);
+  labelIndexes.forEach((index) => ctx.fillText(formatDayLabel(new Date(points[index].checked_at)), x(index), height - 28));
+}
+
+function applyState(payload) {
+  state.remoteProducts = payload.products || [];
+  state.products = state.remoteProducts;
+  state.priceHistory = payload.prices || {};
+  state.expandedProductId = state.products.find((item) => item.active !== false)?.id || state.products[0]?.id || null;
+  renderTable();
+}
+
+function setNote(message, type = "") {
+  els.addProductNote.textContent = message;
+  els.addProductNote.className = `note ${type}`.trim();
+}
+
+async function addProduct(url) {
+  const endpoint = apiUrl("/api/products");
+  if (!endpoint) throw new Error("Backend API не подключён");
+
+  const token = els.apiToken.value.trim();
+  if (token) localStorage.setItem(API_TOKEN_KEY, token);
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ url }),
   });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || "Backend не добавил товар");
+  return payload;
 }
 
 async function loadData() {
   try {
+    const stateEndpoint = apiUrl("/api/state");
+    if (stateEndpoint) {
+      const response = await fetch(stateEndpoint, { cache: "no-store" });
+      if (response.ok) {
+        applyState(await response.json());
+        els.status.textContent = "API подключён";
+        return;
+      }
+    }
+
     const [productsResponse, pricesResponse] = await Promise.all([
       fetch("data/products.json", { cache: "no-store" }),
       fetch("data/prices.json", { cache: "no-store" }),
     ]);
-
     if (!productsResponse.ok || !pricesResponse.ok) throw new Error("Не удалось загрузить JSON");
-
-    state.remoteProducts = await productsResponse.json();
-    state.priceHistory = await pricesResponse.json();
-    state.draftProducts = loadDrafts();
-    mergeProducts();
-    state.expandedProductId = state.products.find((item) => item.active !== false)?.id || state.products[0]?.id || null;
-    els.status.textContent = "Данные загружены";
-    renderTable();
+    applyState({ products: await productsResponse.json(), prices: await pricesResponse.json() });
+    els.status.textContent = stateEndpoint ? "API недоступен" : "Только чтение";
   } catch (error) {
     els.status.textContent = "Ошибка данных";
     els.tableSummary.textContent = "Не удалось загрузить данные";
@@ -462,40 +430,35 @@ async function loadData() {
   }
 }
 
-els.addProductForm.addEventListener("submit", (event) => {
+els.apiToken.value = localStorage.getItem(API_TOKEN_KEY) || "";
+
+els.addProductForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const url = els.productUrl.value.trim();
   if (!url) return;
 
-  let parsed;
   try {
-    parsed = new URL(url);
+    new URL(url);
   } catch {
-    els.addProductNote.textContent = "Проверьте ссылку: нужен полный адрес карточки товара.";
+    setNote("Нужна полная ссылка на карточку товара.", "error");
     return;
   }
 
-  const marketplace = detectMarketplace(url);
-  const product = {
-    id: productIdFromUrl(url),
-    title: marketplaceLabel(marketplace),
-    url,
-    store: parsed.hostname.replace(/^www\./, ""),
-    marketplace,
-    currency: "RUB",
-    active: true,
-    pending: true,
-  };
-  const issueUrl = productIssueUrl(product);
-
-  state.draftProducts = [product, ...state.draftProducts.filter((item) => item.url !== url)];
-  saveDrafts(state.draftProducts);
-  mergeProducts();
-  state.expandedProductId = product.id;
-  els.productUrl.value = "";
-  els.addProductNote.innerHTML = `Черновик добавлен локально. Для регулярного мониторинга <a href="${escapeHtml(issueUrl)}" target="_blank" rel="noreferrer">откройте заявку в GitHub</a>.`;
-  renderTable();
-  window.open(issueUrl, "_blank", "noopener,noreferrer");
+  els.addProductButton.disabled = true;
+  els.addProductButton.textContent = "Добавляю";
+  setNote("Добавляю товар через backend...");
+  try {
+    const payload = await addProduct(url);
+    applyState(payload);
+    els.productUrl.value = "";
+    setNote("Товар добавлен и сохранён.", "success");
+    els.status.textContent = "API подключён";
+  } catch (error) {
+    setNote(error.message, "error");
+  } finally {
+    els.addProductButton.disabled = false;
+    els.addProductButton.textContent = "Добавить";
+  }
 });
 
 loadData();
