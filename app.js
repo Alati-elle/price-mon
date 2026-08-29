@@ -1,32 +1,23 @@
 const LOCAL_DRAFT_KEY = "price-monitor-drafts";
+const GITHUB_NEW_ISSUE_URL = "https://github.com/Alati-elle/price-mon/issues/new";
+const MSK_TIME_ZONE = "Europe/Moscow";
+const DAY_COUNT = 7;
 
 const state = {
   products: [],
   remoteProducts: [],
   draftProducts: [],
   priceHistory: {},
-  selectedProductId: null,
+  expandedProductId: null,
 };
 
 const currencyFormatters = new Map();
 
 const els = {
   status: document.querySelector("#dataStatus"),
-  productCount: document.querySelector("#productCount"),
-  products: document.querySelector("#products"),
-  emptyState: document.querySelector("#emptyState"),
-  productDetails: document.querySelector("#productDetails"),
-  storeName: document.querySelector("#storeName"),
-  productTitle: document.querySelector("#productTitle"),
-  productLink: document.querySelector("#productLink"),
-  currentPrice: document.querySelector("#currentPrice"),
-  minPrice: document.querySelector("#minPrice"),
-  observationCount: document.querySelector("#observationCount"),
-  updatedAt: document.querySelector("#updatedAt"),
-  historyRows: document.querySelector("#historyRows"),
-  chart: document.querySelector("#priceChart"),
-  chartCaption: document.querySelector("#chartCaption"),
-  draftPanel: document.querySelector("#draftPanel"),
+  priceTableHead: document.querySelector("#priceTableHead"),
+  priceTableBody: document.querySelector("#priceTableBody"),
+  tableSummary: document.querySelector("#tableSummary"),
   addProductForm: document.querySelector("#addProductForm"),
   productUrl: document.querySelector("#productUrl"),
   addProductNote: document.querySelector("#addProductNote"),
@@ -51,11 +42,34 @@ function marketplaceLabel(value) {
   }[value] || value;
 }
 
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "\"": "&quot;",
+    "'": "&#39;",
+  }[char]));
+}
+
 function productIdFromUrl(url) {
   const parsed = new URL(url);
   const wb = parsed.pathname.match(/\/catalog\/(\d+)/);
   if (wb) return `wb-${wb[1]}`;
   return `${parsed.hostname.replace(/^www\./, "").replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-${Date.now()}`;
+}
+
+function productIssueUrl(product) {
+  const title = `Добавить товар: ${product.store}`;
+  const body = [
+    "Пожалуйста, добавь товар в мониторинг цен.",
+    "",
+    `URL: ${product.url}`,
+    `Marketplace: ${product.marketplace}`,
+    `Currency: ${product.currency}`,
+  ].join("\n");
+  const params = new URLSearchParams({ title, body });
+  return `${GITHUB_NEW_ISSUE_URL}?${params.toString()}`;
 }
 
 function loadDrafts() {
@@ -93,29 +107,69 @@ function getFormatter(currency = "RUB") {
   return currencyFormatters.get(currency);
 }
 
-function formatPrice(value, currency) {
+function formatPrice(value, currency = "RUB") {
   if (typeof value !== "number" || Number.isNaN(value)) return "-";
   try {
     return getFormatter(currency).format(value);
   } catch {
-    return `${value.toLocaleString("ru-RU")} ${currency || ""}`.trim();
+    return `${Math.round(value).toLocaleString("ru-RU")} ${currency || ""}`.trim();
   }
 }
 
-function formatDate(value) {
+function formatShortPrice(value, currency = "RUB") {
+  if (currency === "RUB" || currency === "RUR") return `${Math.round(value).toLocaleString("ru-RU")} ₽`;
+  return formatPrice(value, currency);
+}
+
+function formatMskDayKey(date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: MSK_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const data = Object.fromEntries(parts.filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
+  return `${data.year}-${data.month}-${data.day}`;
+}
+
+function formatDayLabel(date) {
+  return new Intl.DateTimeFormat("ru-RU", {
+    timeZone: MSK_TIME_ZONE,
+    day: "2-digit",
+    month: "short",
+  }).format(date).replace(".", "");
+}
+
+function formatDateTime(value) {
   if (!value) return "-";
   return new Intl.DateTimeFormat("ru-RU", {
+    timeZone: MSK_TIME_ZONE,
     day: "2-digit",
     month: "short",
     hour: "2-digit",
     minute: "2-digit",
-  }).format(new Date(value));
+  }).format(new Date(value)).replace(".", "");
+}
+
+function dateColumns() {
+  const now = Date.now();
+  return Array.from({ length: DAY_COUNT }, (_, index) => {
+    const date = new Date(now - index * 24 * 60 * 60 * 1000);
+    return {
+      key: formatMskDayKey(date),
+      label: index === 0 ? "Сегодня" : index === 1 ? "Вчера" : formatDayLabel(date),
+    };
+  });
 }
 
 function productHistory(productId) {
   return [...(state.priceHistory[productId] || [])].sort(
     (a, b) => new Date(a.checked_at) - new Date(b.checked_at),
   );
+}
+
+function validHistory(productId) {
+  return productHistory(productId).filter((item) => typeof item.price === "number");
 }
 
 function lastValidObservation(history) {
@@ -133,117 +187,159 @@ function displayTitle(product, history) {
   return fromHistory || product.title || product.url;
 }
 
-function renderProducts() {
-  els.productCount.textContent = state.products.length;
-  els.products.innerHTML = "";
+function priceByDay(history) {
+  const map = new Map();
+  history.forEach((item) => {
+    if (typeof item.price !== "number" || !item.checked_at) return;
+    map.set(formatMskDayKey(new Date(item.checked_at)), item);
+  });
+  return map;
+}
+
+function emptyRow(colspan, message) {
+  const row = document.createElement("tr");
+  row.className = "empty-row";
+  row.innerHTML = `<td colspan="${colspan}">${escapeHtml(message)}</td>`;
+  return row;
+}
+
+function renderTable() {
+  const columns = dateColumns();
+  els.priceTableHead.innerHTML = `
+    <tr>
+      <th scope="col">Товар</th>
+      ${columns.map((day) => `<th scope="col">${escapeHtml(day.label)}</th>`).join("")}
+    </tr>
+  `;
+  els.priceTableBody.innerHTML = "";
+
+  if (!state.products.length) {
+    els.tableSummary.textContent = "Пока нет товаров";
+    els.priceTableBody.append(emptyRow(columns.length + 1, "Добавьте ссылку на карточку товара, чтобы начать наблюдение."));
+    return;
+  }
+
+  const observedCount = Object.values(state.priceHistory).reduce((sum, history) => sum + history.length, 0);
+  els.tableSummary.textContent = `${state.products.length} товаров · ${observedCount} наблюдений · последние ${columns.length} дней`;
 
   state.products.forEach((product) => {
     const history = productHistory(product.id);
+    const valid = validHistory(product.id);
+    const byDay = priceByDay(valid);
     const latest = lastValidObservation(history);
+    const best = minObservation(valid);
+    const host = new URL(product.url).hostname.replace(/^www\./, "");
     const marketplace = product.marketplace || detectMarketplace(product.url);
-    const button = document.createElement("button");
-    button.className = `product-button ${product.id === state.selectedProductId ? "active" : ""}`;
-    button.type = "button";
-    button.innerHTML = `
-      <div class="product-meta">
-        <span>${marketplaceLabel(marketplace)}</span>
-        <span class="badge">${product.pending ? "Черновик" : product.active === false ? "Пауза" : "Мониторинг"}</span>
-      </div>
-      <strong>${displayTitle(product, history)}</strong>
-      <div class="product-price-line">
-        <span>${new URL(product.url).hostname.replace(/^www\./, "")}</span>
-        <b>${latest ? formatPrice(latest.price, latest.currency || product.currency) : "Нет цены"}</b>
-      </div>
+    const title = displayTitle(product, history);
+    const isExpanded = state.expandedProductId === product.id;
+    const statusLabel = product.pending ? "черновик" : product.active === false ? "пауза" : marketplaceLabel(marketplace);
+
+    const row = document.createElement("tr");
+    row.className = `price-row ${isExpanded ? "expanded" : ""}`;
+    row.tabIndex = 0;
+    row.innerHTML = `
+      <td>
+        <div class="product-cell">
+          <span class="chevron" aria-hidden="true">${isExpanded ? "▾" : "▸"}</span>
+          <div>
+            <span class="product-name">${escapeHtml(title)}</span>
+            <span class="product-subline">
+              <span>${escapeHtml(host)}</span>
+              <span class="badge">${escapeHtml(statusLabel)}</span>
+            </span>
+          </div>
+        </div>
+      </td>
+      ${columns.map((day) => {
+        const observation = byDay.get(day.key);
+        const isBest = observation && best && observation.checked_at === best.checked_at && observation.price === best.price;
+        const classes = `price-value ${observation ? "" : "missing"} ${isBest ? "best" : ""}`.trim();
+        return `<td><span class="${classes}">${escapeHtml(observation ? formatShortPrice(observation.price, observation.currency || product.currency) : "—")}</span></td>`;
+      }).join("")}
     `;
-    button.addEventListener("click", () => {
-      state.selectedProductId = product.id;
-      render();
+    row.addEventListener("click", () => toggleProduct(product.id));
+    row.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        toggleProduct(product.id);
+      }
     });
-    els.products.append(button);
+    els.priceTableBody.append(row);
+
+    if (isExpanded) {
+      const detailRow = document.createElement("tr");
+      detailRow.className = "details-row";
+      detailRow.innerHTML = detailTemplate(product, history, latest, best, columns.length + 1);
+      els.priceTableBody.append(detailRow);
+      const canvas = detailRow.querySelector("canvas");
+      requestAnimationFrame(() => drawChart(canvas, valid, latest?.currency || product.currency || "RUB"));
+    }
   });
 }
 
-function renderDraftPanel(product) {
-  if (!product.pending) {
-    els.draftPanel.classList.add("hidden");
-    els.draftPanel.innerHTML = "";
-    return;
-  }
-
-  const cleanProduct = { ...product };
-  delete cleanProduct.pending;
-  els.draftPanel.classList.remove("hidden");
-  els.draftPanel.innerHTML = `
-    <strong>Локальный черновик</strong>
-    <p>Он виден только в этом браузере. Чтобы GitHub Actions начал собирать цену 3 раза в день, эту запись нужно добавить в <code>data/products.json</code>.</p>
-    <code>${JSON.stringify(cleanProduct, null, 2)}</code>
+function detailTemplate(product, history, latest, best, colspan) {
+  const currency = latest?.currency || product.currency || "RUB";
+  const title = displayTitle(product, history);
+  const draftText = product.pending
+    ? "Товар добавлен локально. Для регулярного мониторинга отправьте заявку в GitHub."
+    : "";
+  return `
+    <td colspan="${colspan}">
+      <div class="expanded-panel">
+        <div class="chart-card">
+          <div class="chart-title">
+            <h3>${escapeHtml(title)}</h3>
+            <span>${history.length ? `${history.length} точек` : "ожидаем первое обновление"}</span>
+          </div>
+          <canvas class="inline-chart" width="980" height="320" aria-label="График цены"></canvas>
+          ${draftText ? `<p class="draft-note">${escapeHtml(draftText)}</p>` : ""}
+        </div>
+        <div class="detail-metrics">
+          <div class="metric">
+            <span>Текущая цена</span>
+            <strong>${escapeHtml(latest ? formatPrice(latest.price, currency) : "-")}</strong>
+          </div>
+          <div class="metric best">
+            <span>Минимум</span>
+            <strong>${escapeHtml(best ? formatPrice(best.price, best.currency || currency) : "-")}</strong>
+          </div>
+          <div class="metric">
+            <span>Наблюдений</span>
+            <strong>${history.length}</strong>
+          </div>
+          <div class="metric">
+            <span>Обновлено</span>
+            <strong>${escapeHtml(latest ? formatDateTime(latest.checked_at) : product.pending ? "Черновик" : "-")}</strong>
+          </div>
+          <a class="open-link" href="${escapeHtml(product.url)}" target="_blank" rel="noreferrer">Открыть</a>
+        </div>
+      </div>
+    </td>
   `;
 }
 
-function renderDetails() {
-  const product = state.products.find((item) => item.id === state.selectedProductId);
-  if (!product) {
-    els.emptyState.classList.remove("hidden");
-    els.productDetails.classList.add("hidden");
-    drawChart([]);
-    return;
-  }
-
-  const history = productHistory(product.id);
-  const latest = lastValidObservation(history);
-  const best = minObservation(history);
-  const currency = latest?.currency || product.currency || "RUB";
-  const marketplace = product.marketplace || detectMarketplace(product.url);
-
-  els.emptyState.classList.add("hidden");
-  els.productDetails.classList.remove("hidden");
-  els.storeName.textContent = `${marketplaceLabel(marketplace)} · ${new URL(product.url).hostname.replace(/^www\./, "")}`;
-  els.productTitle.textContent = displayTitle(product, history);
-  els.productLink.href = product.url;
-  els.currentPrice.textContent = latest ? formatPrice(latest.price, currency) : "-";
-  els.minPrice.textContent = best ? `${formatPrice(best.price, best.currency || currency)} · ${formatDate(best.checked_at)}` : "-";
-  els.observationCount.textContent = history.length;
-  els.updatedAt.textContent = latest ? formatDate(latest.checked_at) : product.pending ? "Черновик" : "-";
-  els.chartCaption.textContent = history.length ? `${history.length} точек наблюдения` : "ожидаем первое обновление";
-
-  renderDraftPanel(product);
-
-  els.historyRows.innerHTML = "";
-  if (history.length === 0) {
-    const row = document.createElement("tr");
-    row.innerHTML = `<td colspan="3">История появится после первого запуска обновления.</td>`;
-    els.historyRows.append(row);
-  }
-
-  [...history].reverse().forEach((item) => {
-    const row = document.createElement("tr");
-    if (best && item.checked_at === best.checked_at && item.price === best.price) row.className = "best-row";
-    row.innerHTML = `
-      <td>${formatDate(item.checked_at)}</td>
-      <td>${formatPrice(item.price, item.currency || currency)}</td>
-      <td class="${item.status === "error" ? "error" : ""}">${item.message || item.status || "ok"}</td>
-    `;
-    els.historyRows.append(row);
-  });
-
-  drawChart(history, currency);
+function toggleProduct(productId) {
+  state.expandedProductId = state.expandedProductId === productId ? null : productId;
+  renderTable();
 }
 
-function drawChart(history, currency = "RUB") {
-  const ctx = els.chart.getContext("2d");
-  const width = els.chart.width;
-  const height = els.chart.height;
-  const padding = { top: 28, right: 28, bottom: 58, left: 84 };
+function drawChart(canvas, history, currency = "RUB") {
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const width = canvas.width;
+  const height = canvas.height;
+  const padding = { top: 52, right: 36, bottom: 54, left: 78 };
   const points = history.filter((item) => typeof item.price === "number");
 
   ctx.clearRect(0, 0, width, height);
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, height);
 
-  if (points.length === 0) {
-    ctx.fillStyle = "#71766e";
-    ctx.font = "24px Inter, sans-serif";
+  if (!points.length) {
+    ctx.fillStyle = "#727a70";
+    ctx.font = "22px Inter, sans-serif";
     ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
     ctx.fillText("Ждём первое наблюдение", width / 2, height / 2);
     return;
   }
@@ -254,11 +350,10 @@ function drawChart(history, currency = "RUB") {
   const span = Math.max(max - min, 1);
   const plotWidth = width - padding.left - padding.right;
   const plotHeight = height - padding.top - padding.bottom;
-
   const x = (index) => padding.left + (points.length === 1 ? plotWidth / 2 : (plotWidth * index) / (points.length - 1));
   const y = (price) => padding.top + plotHeight - ((price - min) / span) * plotHeight;
 
-  ctx.strokeStyle = "rgba(34, 39, 34, 0.1)";
+  ctx.strokeStyle = "rgba(31, 36, 31, 0.1)";
   ctx.lineWidth = 1;
   ctx.beginPath();
   for (let i = 0; i <= 4; i += 1) {
@@ -269,12 +364,11 @@ function drawChart(history, currency = "RUB") {
   ctx.stroke();
 
   const gradient = ctx.createLinearGradient(padding.left, 0, width - padding.right, 0);
-  gradient.addColorStop(0, "#137c71");
-  gradient.addColorStop(0.65, "#19a392");
-  gradient.addColorStop(1, "#e86f51");
+  gradient.addColorStop(0, "#12796f");
+  gradient.addColorStop(1, "#d97706");
 
   ctx.strokeStyle = gradient;
-  ctx.lineWidth = 5;
+  ctx.lineWidth = 4;
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
   ctx.beginPath();
@@ -288,30 +382,41 @@ function drawChart(history, currency = "RUB") {
 
   const best = minObservation(points);
   points.forEach((point, index) => {
+    const px = x(index);
+    const py = y(point.price);
     const isBest = best && point.checked_at === best.checked_at && point.price === best.price;
-    ctx.fillStyle = isBest ? "#e86f51" : "#137c71";
+
+    ctx.fillStyle = "#ffffff";
     ctx.beginPath();
-    ctx.arc(x(index), y(point.price), isBest ? 9 : 5, 0, Math.PI * 2);
+    ctx.arc(px, py, isBest ? 8 : 6, 0, Math.PI * 2);
     ctx.fill();
+
+    ctx.fillStyle = isBest ? "#d97706" : "#12796f";
+    ctx.beginPath();
+    ctx.arc(px, py, isBest ? 5 : 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = isBest ? "#92400e" : "#485047";
+    ctx.font = "13px Inter, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+    ctx.fillText(formatShortPrice(point.price, currency), px, Math.max(18, py - 12));
   });
 
-  ctx.fillStyle = "#71766e";
-  ctx.font = "18px Inter, sans-serif";
+  ctx.fillStyle = "#727a70";
+  ctx.font = "13px Inter, sans-serif";
   ctx.textAlign = "right";
+  ctx.textBaseline = "middle";
   [min, max].forEach((price) => {
-    ctx.fillText(formatPrice(price, currency), padding.left - 12, y(price) + 6);
+    ctx.fillText(formatShortPrice(price, currency), padding.left - 12, y(price));
   });
 
   ctx.textAlign = "center";
+  ctx.textBaseline = "top";
   const labelIndexes = [...new Set([0, Math.floor((points.length - 1) / 2), points.length - 1])];
   labelIndexes.forEach((index) => {
-    ctx.fillText(formatDate(points[index].checked_at), x(index), height - 20);
+    ctx.fillText(formatDayLabel(new Date(points[index].checked_at)), x(index), height - 32);
   });
-}
-
-function render() {
-  renderProducts();
-  renderDetails();
 }
 
 async function loadData() {
@@ -327,12 +432,14 @@ async function loadData() {
     state.priceHistory = await pricesResponse.json();
     state.draftProducts = loadDrafts();
     mergeProducts();
-    state.selectedProductId = state.products.find((item) => item.active !== false)?.id || state.products[0]?.id || null;
+    state.expandedProductId = state.products.find((item) => item.active !== false)?.id || state.products[0]?.id || null;
     els.status.textContent = "Данные загружены";
-    render();
+    renderTable();
   } catch (error) {
     els.status.textContent = "Ошибка данных";
-    els.emptyState.innerHTML = `<h2>Не удалось загрузить данные</h2><p>${error.message}</p>`;
+    els.tableSummary.textContent = "Не удалось загрузить данные";
+    els.priceTableBody.innerHTML = "";
+    els.priceTableBody.append(emptyRow(DAY_COUNT + 1, error.message));
   }
 }
 
@@ -341,7 +448,14 @@ els.addProductForm.addEventListener("submit", (event) => {
   const url = els.productUrl.value.trim();
   if (!url) return;
 
-  const parsed = new URL(url);
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    els.addProductNote.textContent = "Проверьте ссылку: нужен полный адрес карточки товара.";
+    return;
+  }
+
   const marketplace = detectMarketplace(url);
   const product = {
     id: productIdFromUrl(url),
@@ -353,14 +467,16 @@ els.addProductForm.addEventListener("submit", (event) => {
     active: true,
     pending: true,
   };
+  const issueUrl = productIssueUrl(product);
 
   state.draftProducts = [product, ...state.draftProducts.filter((item) => item.url !== url)];
   saveDrafts(state.draftProducts);
   mergeProducts();
-  state.selectedProductId = product.id;
+  state.expandedProductId = product.id;
   els.productUrl.value = "";
-  els.addProductNote.textContent = "Добавила локальный черновик. Для регулярного мониторинга запись должна попасть в data/products.json; текущую WB-ссылку я уже сохраняю в репозиторий.";
-  render();
+  els.addProductNote.innerHTML = `Черновик добавлен локально. Для регулярного мониторинга <a href="${escapeHtml(issueUrl)}" target="_blank" rel="noreferrer">откройте заявку в GitHub</a>.`;
+  renderTable();
+  window.open(issueUrl, "_blank", "noopener,noreferrer");
 });
 
 loadData();
