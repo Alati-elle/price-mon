@@ -1,4 +1,3 @@
-const API_TOKEN_KEY = "price-monitor-api-token";
 const MSK_TIME_ZONE = "Europe/Moscow";
 const DAY_COUNT = 7;
 
@@ -19,7 +18,6 @@ const els = {
   addProductForm: document.querySelector("#addProductForm"),
   addProductButton: document.querySelector("#addProductButton"),
   productUrl: document.querySelector("#productUrl"),
-  apiToken: document.querySelector("#apiToken"),
   addProductNote: document.querySelector("#addProductNote"),
 };
 
@@ -387,15 +385,9 @@ async function addProduct(url) {
   const endpoint = apiUrl("/api/products");
   if (!endpoint) throw new Error("Backend API не подключён");
 
-  const token = els.apiToken.value.trim();
-  if (token) localStorage.setItem(API_TOKEN_KEY, token);
-
   const response = await fetch(endpoint, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ url }),
   });
   const payload = await response.json().catch(() => ({}));
@@ -429,8 +421,6 @@ async function loadData() {
     els.priceTableBody.append(emptyRow(DAY_COUNT + 1, error.message));
   }
 }
-
-els.apiToken.value = localStorage.getItem(API_TOKEN_KEY) || "";
 
 els.addProductForm.addEventListener("submit", async (event) => {
   event.preventDefault();
