@@ -57,10 +57,7 @@ python3 scripts/update_prices.py --dry-run
 
 ## GitHub Pages
 
-В репозитории добавлен workflow деплоя Pages через GitHub Actions. Если Pages еще не активировался автоматически, включите его в настройках:
-
-1. `Settings` -> `Pages`.
-2. Source: `GitHub Actions`.
+В репозитории добавлен workflow деплоя Pages через GitHub Actions. Source настроен как `GitHub Actions`.
 
 После публикации страница будет доступна по адресу:
 
