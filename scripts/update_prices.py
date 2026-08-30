@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
 import argparse
+import hashlib
+import hmac
 import html
 import json
+import os
 import re
 import sys
 import urllib.error
 import urllib.request
 from http.cookiejar import CookieJar
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlencode, urljoin, urlparse
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -40,6 +43,8 @@ MARKETPLACE_HOSTS = {
 }
 
 SHORT_LINK_HOSTS = {"ali.click", "ozon.ru"}
+ALIEXPRESS_API_URL = "https://eco.taobao.com/router/rest"
+ALIEXPRESS_API_METHOD = "aliexpress.affiliate.productdetail.get"
 
 
 @dataclass
@@ -153,6 +158,24 @@ def fetch_json(url):
             "Accept": "*/*",
             "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
         },
+    )
+    with urllib.request.urlopen(request, timeout=30) as response:
+        charset = response.headers.get_content_charset() or "utf-8"
+        return json.loads(response.read().decode(charset, errors="replace"))
+
+
+def post_form_json(url, params):
+    encoded = urlencode(params).encode("utf-8")
+    request = urllib.request.Request(
+        url,
+        data=encoded,
+        headers={
+            "User-Agent": USER_AGENT,
+            "Accept": "application/json",
+            "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
+            "Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
+        },
+        method="POST",
     )
     with urllib.request.urlopen(request, timeout=30) as response:
         charset = response.headers.get_content_charset() or "utf-8"
@@ -433,6 +456,152 @@ def parse_wb_price(url, fallback_currency):
     return PriceResult(normalize_price(price), "RUB", title or None, "wildberries-api", image_url, url)
 
 
+def extract_ali_product_id(url):
+    parsed = urlparse(url)
+    match = re.search(r"/(?:item|i)/(\d+)\.html", parsed.path)
+    if match:
+        return match.group(1)
+    match = re.search(r"\b(?:product_id|productId|itemId)=(\d+)", parsed.query)
+    return match.group(1) if match else None
+
+
+def aliexpress_api_credentials():
+    app_key = os.environ.get("ALIEXPRESS_APP_KEY", "").strip()
+    app_secret = os.environ.get("ALIEXPRESS_APP_SECRET", "").strip()
+    if not app_key or not app_secret:
+        return None
+    return app_key, app_secret
+
+
+def sign_top_params(params, app_secret, sign_method="hmac"):
+    payload = "".join(f"{key}{params[key]}" for key in sorted(params) if key != "sign" and params[key] is not None)
+    if sign_method == "hmac":
+        digest = hmac.new(app_secret.encode("utf-8"), payload.encode("utf-8"), hashlib.md5).hexdigest()
+    elif sign_method == "md5":
+        digest = hashlib.md5(f"{app_secret}{payload}{app_secret}".encode("utf-8")).hexdigest()
+    else:
+        digest = hmac.new(app_secret.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()
+    return digest.upper()
+
+
+def ali_products_from_response(data):
+    containers = [
+        data.get("aliexpress_affiliate_productdetail_get_response", {}) if isinstance(data, dict) else {},
+        data,
+    ]
+    for container in containers:
+        resp_result = container.get("resp_result", {}) if isinstance(container, dict) else {}
+        result = resp_result.get("result", {}) if isinstance(resp_result, dict) else {}
+        products = result.get("products", {}) if isinstance(result, dict) else {}
+        product = products.get("product") if isinstance(products, dict) else products
+        if isinstance(product, list):
+            return product
+        if isinstance(product, dict):
+            return [product]
+    return []
+
+
+def ali_api_error_message(data):
+    if not isinstance(data, dict):
+        return None
+    error = data.get("error_response")
+    if isinstance(error, dict):
+        code = error.get("code") or error.get("sub_code") or "error"
+        message = error.get("msg") or error.get("sub_msg") or "AliExpress API error"
+        return f"aliexpress-api {code}: {message}"
+    response = data.get("aliexpress_affiliate_productdetail_get_response", data)
+    resp_result = response.get("resp_result", {}) if isinstance(response, dict) else {}
+    code = str(resp_result.get("resp_code", ""))
+    if code and code != "200":
+        return f"aliexpress-api {code}: {resp_result.get('resp_msg') or 'API error'}"
+    return None
+
+
+def parse_ali_api_product(product, fallback_currency, resolved_url):
+    title = compact_text(product.get("product_title")) or None
+    image_url = product.get("product_main_image_url") or None
+    product_url = product.get("product_detail_url") or resolved_url
+    price_fields = [
+        ("target_sale_price", "target_sale_price_currency"),
+        ("target_app_sale_price", "target_app_sale_price_currency"),
+        ("sale_price", "sale_price_currency"),
+        ("app_sale_price", "app_sale_price_currency"),
+    ]
+    for price_key, currency_key in price_fields:
+        price = parse_number(product.get(price_key))
+        if price is None:
+            continue
+        currency = compact_text(product.get(currency_key)).upper() or fallback_currency or "RUB"
+        return PriceResult(normalize_price(price), currency, title, "aliexpress-api", image_url, product_url)
+    return PriceResult(None, fallback_currency or "RUB", title, "aliexpress-api: price not found", image_url, product_url)
+
+
+def parse_ali_price_with_api(url, fallback_currency):
+    credentials = aliexpress_api_credentials()
+    if credentials is None:
+        return None
+
+    product_id = extract_ali_product_id(url)
+    resolved_url = url
+    if product_id is None:
+        try:
+            resolved_url = resolve_url(url)
+            product_id = extract_ali_product_id(resolved_url)
+        except urllib.error.URLError:
+            return None
+    if product_id is None:
+        return None
+
+    app_key, app_secret = credentials
+    sign_method = os.environ.get("ALIEXPRESS_SIGN_METHOD", "hmac").strip() or "hmac"
+    timestamp = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d %H:%M:%S")
+    params = {
+        "app_key": app_key,
+        "format": "json",
+        "method": ALIEXPRESS_API_METHOD,
+        "partner_id": "price-mon",
+        "sign_method": sign_method,
+        "timestamp": timestamp,
+        "v": "2.0",
+        "fields": ",".join([
+            "product_id",
+            "product_title",
+            "product_main_image_url",
+            "product_detail_url",
+            "sale_price",
+            "sale_price_currency",
+            "target_sale_price",
+            "target_sale_price_currency",
+            "app_sale_price",
+            "app_sale_price_currency",
+            "target_app_sale_price",
+            "target_app_sale_price_currency",
+            "original_price",
+            "original_price_currency",
+        ]),
+        "product_ids": product_id,
+        "target_currency": os.environ.get("ALIEXPRESS_TARGET_CURRENCY", fallback_currency or "RUB"),
+        "target_language": os.environ.get("ALIEXPRESS_TARGET_LANGUAGE", "RU"),
+        "country": os.environ.get("ALIEXPRESS_COUNTRY", "RU"),
+    }
+    tracking_id = os.environ.get("ALIEXPRESS_TRACKING_ID", "").strip()
+    app_signature = os.environ.get("ALIEXPRESS_APP_SIGNATURE", "").strip()
+    if tracking_id:
+        params["tracking_id"] = tracking_id
+    if app_signature:
+        params["app_signature"] = app_signature
+    params["sign"] = sign_top_params(params, app_secret, sign_method)
+
+    data = post_form_json(ALIEXPRESS_API_URL, params)
+    products = ali_products_from_response(data)
+    if products:
+        return parse_ali_api_product(products[0], fallback_currency, resolved_url)
+    message = ali_api_error_message(data)
+    if message:
+        return PriceResult(None, fallback_currency or "RUB", source=message, resolved_url=resolved_url)
+    return PriceResult(None, fallback_currency or "RUB", source="aliexpress-api: empty response", resolved_url=resolved_url)
+
+
 def parse_embedded_json_price(page, fallback_currency, marketplace):
     candidates = []
     title = extract_title_from_meta(page)
@@ -516,6 +685,11 @@ def parse_marketplace_price(product):
     url = normalized_product_url(product["url"])
     marketplace = detect_marketplace(url) if url != product["url"] else (product.get("marketplace") or detect_marketplace(url))
     fallback_currency = product.get("currency", "RUB")
+
+    if marketplace == "aliexpress":
+        api_result = parse_ali_price_with_api(url, fallback_currency)
+        if api_result is not None and api_result.price is not None:
+            return api_result
 
     if marketplace == "wildberries":
         result = parse_wb_price(url, fallback_currency)
