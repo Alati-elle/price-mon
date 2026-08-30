@@ -33,6 +33,13 @@ jobs:
       - name: Add product
         env:
           PRODUCT_URL: ${{ inputs.product_url }}
+          ALIEXPRESS_APP_KEY: ${{ secrets.ALIEXPRESS_APP_KEY }}
+          ALIEXPRESS_APP_SECRET: ${{ secrets.ALIEXPRESS_APP_SECRET }}
+          ALIEXPRESS_TRACKING_ID: ${{ secrets.ALIEXPRESS_TRACKING_ID }}
+          ALIEXPRESS_APP_SIGNATURE: ${{ secrets.ALIEXPRESS_APP_SIGNATURE }}
+          ALIEXPRESS_TARGET_CURRENCY: RUB
+          ALIEXPRESS_TARGET_LANGUAGE: RU
+          ALIEXPRESS_COUNTRY: RU
         run: python scripts/add_product.py "$PRODUCT_URL"
 
       - name: Commit changed data
