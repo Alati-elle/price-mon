@@ -45,6 +45,7 @@ MARKETPLACE_HOSTS = {
 SHORT_LINK_HOSTS = {"ali.click", "ozon.ru"}
 ALIEXPRESS_API_URL = "https://eco.taobao.com/router/rest"
 ALIEXPRESS_API_METHOD = "aliexpress.affiliate.productdetail.get"
+WB_DESTINATIONS = ("-1257786", "-1029256", "123585726")
 
 
 @dataclass
@@ -414,46 +415,68 @@ def first_wb_image(article):
     return wb_image_candidates(article)[0]
 
 
-def parse_wb_price(url, fallback_currency):
-    article = extract_wb_article(url)
-    if not article:
-        return PriceResult(None, fallback_currency or "RUB", source="wildberries-api")
-
-    endpoint = f"https://card.wb.ru/cards/v4/detail?appType=1&curr=rub&dest=-1257786&spp=30&nm={article}"
-    data = fetch_json(endpoint)
-    products = data.get("data", {}).get("products") or data.get("products", [])
-    if not products:
-        return PriceResult(None, fallback_currency or "RUB", source="wildberries-api")
-
-    item = products[0]
-    sizes = item.get("sizes") or []
+def wb_prices_from_product(item):
     prices = []
-    for size in sizes:
+    for size in item.get("sizes") or []:
         price_info = size.get("price") or {}
         total = price_info.get("total")
         product_part = price_info.get("product")
         logistics_part = price_info.get("logistics")
+        basic = price_info.get("basic")
         if isinstance(total, (int, float)) and total > 0:
             prices.append(total / 100)
         elif isinstance(product_part, (int, float)) and product_part > 0:
             logistics = logistics_part if isinstance(logistics_part, (int, float)) else 0
             prices.append((product_part + logistics) / 100)
-        else:
-            basic = price_info.get("basic")
-            if isinstance(basic, (int, float)) and basic > 0:
-                prices.append(basic / 100)
+        elif isinstance(basic, (int, float)) and basic > 0:
+            prices.append(basic / 100)
 
-    direct_price = item.get("salePriceU") or item.get("priceU")
-    if isinstance(direct_price, (int, float)) and direct_price > 0:
-        prices.append(direct_price / 100)
+    for key in ("salePriceU", "priceU", "salePrice", "price"):
+        direct_price = item.get(key)
+        if isinstance(direct_price, (int, float)) and direct_price > 0:
+            prices.append(direct_price / 100 if key.endswith("U") else direct_price)
+    return prices
 
-    title = compact_text(" ".join(part for part in [item.get("brand"), item.get("name")] if part))
+
+def wb_product_from_endpoint(article, destination):
+    dest_param = f"&dest={destination}" if destination else ""
+    endpoint = f"https://card.wb.ru/cards/v4/detail?appType=1&curr=rub{dest_param}&spp=30&nm={article}"
+    data = fetch_json(endpoint)
+    products = data.get("data", {}).get("products") or data.get("products", [])
+    return products[0] if products else None
+
+
+def parse_wb_price(url, fallback_currency):
+    article = extract_wb_article(url)
+    if not article:
+        return PriceResult(None, fallback_currency or "RUB", source="wildberries-api")
+
+    best_item = None
+    best_prices = []
+    for destination in WB_DESTINATIONS:
+        item = wb_product_from_endpoint(article, destination)
+        if not item:
+            continue
+        prices = wb_prices_from_product(item)
+        if best_item is None:
+            best_item = item
+        if prices:
+            best_item = item
+            best_prices = prices
+            break
+
+    title = None
+    if best_item:
+        title = compact_text(" ".join(part for part in [best_item.get("brand"), best_item.get("name")] if part)) or None
     image_url = first_wb_image(article)
-    if not prices and item.get("totalQuantity") == 0:
-        return PriceResult(None, "RUB", title or None, "wildberries-out-of-stock", image_url, url)
 
-    price = min(prices) if prices else None
-    return PriceResult(normalize_price(price), "RUB", title or None, "wildberries-api", image_url, url)
+    if best_prices:
+        return PriceResult(normalize_price(min(best_prices)), "RUB", title, "wildberries-api", image_url, url)
+
+    if best_item and best_item.get("totalQuantity") == 0:
+        return PriceResult(None, "RUB", title, "wildberries-out-of-stock", image_url, url)
+
+    return PriceResult(None, fallback_currency or "RUB", title, "wildberries-price-not-found", image_url, url)
 
 
 def extract_ali_product_id(url):
