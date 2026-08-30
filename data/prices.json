@@ -206,5 +206,16 @@
       "status": "error",
       "message": "HTTP Error 403: Forbidden"
     }
+  ],
+  "aliexpress-ru-451a97ca": [
+    {
+      "checked_at": "2026-08-30T07:44:25Z",
+      "price": null,
+      "currency": "RUB",
+      "status": "error",
+      "message": "aliexpress-browser",
+      "title": "Пройдите проверку",
+      "resolved_url": "https://aliexpress.ru//item/1005008733439764.html/_____tmd_____/punish?x5secdata=xfc_7s1MFv6fB5hrW4wK4Lpav7avLjF0AsecKjy6RYGEO4pw8urecoQoLmE3MfLz_kc9pTl2UiVmiVxNTPaPm9X5kAE2Vetd6OMB5QE7eOyeFBmEzMGAd5tVyzk_5SamFfXLkcEr_1eYnsPyaOohNkLh57wBKhIThBrPEOTyUXXE2fuMvFOPkIbFpp8I4I4cTkyMoF3CGYOLhysaYAcoE4d47YxNbEabUtaVorf7MMeRcAkNaSdSdPsfvXBcOKwxz7D9asI2GY_dJiaLrQiJoX0ZDRyBia3jOtOjS9mryqW-l188Fy33k91C977c3zf7xZ2bPTaJef_hLYPAissMjOtY3NYnMOs01K7_KSWQPAmOqogOU7F93lba0gexBijVCuCMkVmyZ8YTo5LhC1pxpofINfeFl5rdI3X3ZdcMzMhInGr7732Sc98SBInH_L1McbhTZUTYwZapikijfIDkLDCCpIhgHhzuZkAvo18gj6od4h7bAPHbFozL2DUCvjxS923ZMbnWWtJ77QVF8m5iTAdY-HWscdhuvWGSG51rtt8c4LLVVimsZ-0BMCGqJs19W-m4gCH4FANkXZjRyYt7JPO2ZD2g810PwhV7nKk5hOsFXD7cNox5mlkuZDKPiJg7NV82zHvo7Yrm8b0cxr2N2XXn_pyPbN4iKxbyWdRbCsFqX_HrlPPcPV0ZOs1nqePiUN__bx__aliexpress.ru%2fitem%2f1005008733439764.html&x5step=1"
+    }
   ]
 }
