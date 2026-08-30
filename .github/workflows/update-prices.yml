@@ -22,6 +22,12 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install browser fallback
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install playwright
+          python -m playwright install chromium
+
       - name: Update prices
         run: python scripts/update_prices.py
 
