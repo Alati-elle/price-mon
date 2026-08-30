@@ -90,7 +90,25 @@ def fetch_html(url):
         return response.read().decode(charset, errors="replace")
 
 
+def fetch_html_with_browser_redirects(url):
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(CookieJar()))
+    request = urllib.request.Request(
+        url,
+        headers=request_headers("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"),
+    )
+    with opener.open(request, timeout=30) as response:
+        charset = response.headers.get_content_charset() or "utf-8"
+        return response.geturl(), response.read().decode(charset, errors="replace")
+
+
 def resolve_url(url, limit=8):
+    try:
+        resolved_url, _ = fetch_html_with_browser_redirects(url)
+        if resolved_url != url:
+            return resolved_url
+    except urllib.error.URLError:
+        pass
+
     current = url
     opener = urllib.request.build_opener(NoRedirect, urllib.request.HTTPCookieProcessor(CookieJar()))
     seen = set()
@@ -441,6 +459,59 @@ def parse_embedded_json_price(page, fallback_currency, marketplace):
     return PriceResult(normalize_price(price), currency, title, f"{marketplace}-embedded-json", image_url)
 
 
+def parse_ali_price_with_browser(url, fallback_currency):
+    try:
+        from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        return None
+
+    try:
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(headless=True)
+            context = browser.new_context(
+                locale="ru-RU",
+                timezone_id="Europe/Moscow",
+                user_agent=USER_AGENT,
+                extra_http_headers={"Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7"},
+            )
+            page = context.new_page()
+            try:
+                page.goto(url, wait_until="domcontentloaded", timeout=45_000)
+                try:
+                    page.wait_for_load_state("networkidle", timeout=15_000)
+                except PlaywrightTimeoutError:
+                    pass
+                page.wait_for_timeout(3_000)
+
+                resolved_url = page.url
+                title = compact_text(page.title()) or None
+                image_locator = page.locator("meta[property='og:image']")
+                image_url = image_locator.first.get_attribute("content") if image_locator.count() else None
+                if image_url and image_url.startswith("//"):
+                    image_url = "https:" + image_url
+
+                body_text = compact_text(page.locator("body").inner_text(timeout=10_000))
+                if re.search(r"captcha|подозрительн|robot|verify", body_text, re.IGNORECASE):
+                    return PriceResult(None, fallback_currency or "RUB", title, "aliexpress-captcha", image_url, resolved_url)
+
+                candidates = []
+                for match in re.finditer(r"(?<!\d)(\d[\d\s\u00a0.,]{1,14})\s*(?:₽|руб\.?|RUB)(?!\w)", body_text, re.IGNORECASE):
+                    price = parse_number(match.group(1))
+                    if price is not None and 20 <= price <= 10_000_000:
+                        candidates.append(price)
+
+                if candidates:
+                    return PriceResult(normalize_price(min(candidates)), "RUB", title, "aliexpress-browser", image_url, resolved_url)
+
+                return PriceResult(None, fallback_currency or "RUB", title, "aliexpress-browser", image_url, resolved_url)
+            finally:
+                context.close()
+                browser.close()
+    except Exception as exc:
+        return PriceResult(None, fallback_currency or "RUB", None, f"aliexpress-browser unavailable: {str(exc)[:120]}", None, url)
+
+
 def parse_marketplace_price(product):
     url = normalized_product_url(product["url"])
     marketplace = detect_marketplace(url) if url != product["url"] else (product.get("marketplace") or detect_marketplace(url))
@@ -451,12 +522,24 @@ def parse_marketplace_price(product):
         if result.price is not None or result.source == "wildberries-out-of-stock":
             return result
 
-    page = fetch_html(url)
+    try:
+        page = fetch_html(url)
+    except urllib.error.URLError:
+        if marketplace == "aliexpress":
+            browser_result = parse_ali_price_with_browser(url, fallback_currency)
+            if browser_result is not None:
+                return browser_result
+        raise
+
     if marketplace in {"ozon", "yandex_market", "aliexpress"}:
         result = parse_embedded_json_price(page, fallback_currency, marketplace)
         if result.price is not None:
             result.resolved_url = url
             return result
+        if marketplace == "aliexpress":
+            browser_result = parse_ali_price_with_browser(url, fallback_currency)
+            if browser_result is not None:
+                return browser_result
 
     result = extract_price(page, fallback_currency)
     result.source = marketplace if marketplace != "generic" else result.source
