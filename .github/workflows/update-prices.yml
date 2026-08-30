@@ -29,6 +29,14 @@ jobs:
           python -m playwright install chromium
 
       - name: Update prices
+        env:
+          ALIEXPRESS_APP_KEY: ${{ secrets.ALIEXPRESS_APP_KEY }}
+          ALIEXPRESS_APP_SECRET: ${{ secrets.ALIEXPRESS_APP_SECRET }}
+          ALIEXPRESS_TRACKING_ID: ${{ secrets.ALIEXPRESS_TRACKING_ID }}
+          ALIEXPRESS_APP_SIGNATURE: ${{ secrets.ALIEXPRESS_APP_SIGNATURE }}
+          ALIEXPRESS_TARGET_CURRENCY: RUB
+          ALIEXPRESS_TARGET_LANGUAGE: RU
+          ALIEXPRESS_COUNTRY: RU
         run: python scripts/update_prices.py
 
       - name: Commit changed data
