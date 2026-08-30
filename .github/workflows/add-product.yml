@@ -17,10 +17,10 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -36,7 +36,7 @@ jobs:
         run: python scripts/add_product.py "$PRODUCT_URL"
 
       - name: Commit changed data
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "Add product"
           file_pattern: data/products.json data/prices.json
