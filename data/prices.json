@@ -946,6 +946,13 @@
       "currency": "RUB",
       "status": "error",
       "message": "HTTP Error 403: Forbidden"
+    },
+    {
+      "checked_at": "2026-10-02T11:53:02Z",
+      "price": null,
+      "currency": "RUB",
+      "status": "error",
+      "message": "HTTP Error 403: Forbidden"
     }
   ],
   "ali-click-30f3a528ee": [
@@ -1895,6 +1902,15 @@
       "message": "aliexpress-browser",
       "title": "Пройдите проверку",
       "resolved_url": "https://aliexpress.ru//item/1005008733439764.html/_____tmd_____/punish?x5secdata=xfeOGE_L8q4UVY30JFw-ah6sRrsra5YYhuuQ2bkjX3VLZxAjOGJyPtC7irwft7U91Kiz88yNczN-y-gI8LVVH2qf1Gp3igA1yV1HVxu49zl09KX1qexG9uUwifn9LmZbX2GkP8OmkiclqQ407ar8M7UjNPLkvycuV844RI8C2mj6L2DbgqHBKNk8BJdUY_I2VWHMbCac1wpXuLRb280XuIjRcibXQqTD6v_HxU7_EMNIqCM7VCCuf9ZdzQqo_aNYurSEyMzzfkmOhJyMpdZ1orMSSrkHmvgUW86MJRnhGfz__IrGz1k5aOvZt9ZncXbmkIotDzoOB7Y9sdMQJYk5VSAgk0HFq9rfk6fABlTFfHoxuvOfnV0zRfVfR8zjq94OiFbMcPcZRSDszHdwpp3NELrHRztGJdA3CPU9QbX1l3zoSQ1VKgD1XJNLIpCimVYLmMqs8jXjR709UAY9F3wJfY1Y3FRiY8dglEJkcrc-rsqtldpFPAnFoEV41iuO0jUtZ_-KX_ZNmtZF7VOQaLwutx381XC8snInnov-O4TTx37yMP3HbbrcwmDecJqtt4aCr1s7qy9bGNqgFxjEctP4lcGsAvqJf7Kq4Iu064K1AYWvTcLcM2R-FHiDqqgxiCX_L35XzcgwKERklKLK-zPxXiBrLQWPeRi-6BHXixEoYukgXCb3nO7T5h6PSzf6XJ_UG_2EJZFD3IBZKyOJk_JTbyfgbY5VMn7_kHcCR0n2ZgU5LZ5lA1vw0Sbl99QAHLqOGrk4YlOFcOWJmqyYIYoxENNw__bx__aliexpress.ru%2fitem%2f1005008733439764.html&x5step=1"
+    },
+    {
+      "checked_at": "2026-10-02T11:53:02Z",
+      "price": null,
+      "currency": "RUB",
+      "status": "error",
+      "message": "aliexpress-browser",
+      "title": "Пройдите проверку",
+      "resolved_url": "https://aliexpress.ru//item/1005008733439764.html/_____tmd_____/punish?x5secdata=xfeXAWmUeMNPa89xc_arTxi_9zzEOACUSDy30jdS9TlR_aX8gzsNr20BYqbzmWggfP59L339Pe40Gelr4lkC71o6MS9Odr9fUQMZjXqXLN7BS-FyYEBYKXnmNX8QK-_Pz471uF-r3pD9BHyA64oB0T2g9ryNGgqrYN5uwzUAZrwMXsTofgP7y8dic2vWrdmPJJyTHZZ4JCBx7idDghurFzsP4PvyUa9Z00TL65nFFQh6g_iF2wIZasf_V_m-cYV-9glCQllfiwoMQhpBsFy2F9I9D1Z9eJCF57R6mqM3WCnXw-Pt_9P1cbIdM6Vb7CDZZhiqeBYA1Um3dgdwddJ3wm1mjUgmRdJZ8GFHsMRQFQVmj40mSDur-uTz1pjnnahVnAOqwMQYn6X1VGqAKM_D4ARE1dTyhVeQEU-NX6RuN6TWsNbnJa7MAqzI_xC2FPejel6i3ywUTqKY35nvysRsXTEYmew4XYEZvrYtXazO9vE0dKEcqxUrdxZRYYx7mxmFibwjqPS8UyAV9NUqATyZOloBpeg2g5QbbOogH2Rryzyj15oQpYs2WJmMPyenqrxlm0hozsf3pemvle0TdiY-bsFNK_4lQGVS93omqx7yVBZMMOBqTxqFmdhAw5zz30Y6QoPNP9AZT107FwzRoc9nJJstUxZICFZieki-khxlcJz_lojwf1_libyqTR-5YKKNlzPU1BVnyG8cI7rgruaZvWf6YCTem1CblMJaKTupwJ5oh8XwfuxRaM6pjovT1ynkBOVMnmre7453U9ok1Y26KRcg__bx__aliexpress.ru%2fitem%2f1005008733439764.html&x5step=1"
     }
   ],
   "ozon-ru-45f39888": [
@@ -2621,6 +2637,13 @@
     },
     {
       "checked_at": "2026-10-02T00:37:36Z",
+      "price": null,
+      "currency": "RUB",
+      "status": "error",
+      "message": "HTTP Error 403: Forbidden"
+    },
+    {
+      "checked_at": "2026-10-02T11:53:02Z",
       "price": null,
       "currency": "RUB",
       "status": "error",
@@ -3518,6 +3541,15 @@
       "message": "aliexpress-browser",
       "title": "Пройдите проверку",
       "resolved_url": "https://aliexpress.ru//item/1005008733439764.html/_____tmd_____/punish?x5secdata=xfPwsiA2XGvOZC7qUUq35SHt7XCDuZT5GHg9ys71v-lBK1CslwJ9VmO_-ya1SSR_QD6x9Cb9QdDffN0yaaFji48mkGGRuuMvsMJrmfKwH3wAJw0XiS_1B7X3H2vbetbiGZCHVe77sfks_mA5FNkEPo9Ynvjj3x0QR3JL4sKrdwFXxgql5JWTduKKyG386j6Ud9n5prQxWpC3htw8_cG5LHfPO5gC6kZOySdS9Iie9hEwdoaNz5N_RbWTZFvyDhR6_FF_B3rgaY2NKWdmiM11uG84-hvjy41ObNTiwClQ0brkqh_wcG3Z0xohLEK7GE2jjhAFIXPT24_jrSbRXAZojLs76nW1CrVPvUOtElRBXhd9I-FglWAYeiSGEVyaVJU167vSJOeNqIJEvDwW_41MZ-f3ggbPyAsu7f4DpG1-4R-sJARgnkihNaR6A0nDPJlbPIJpl-NhhqSCeRKK2MGzK2IoTjEPWIhnui27wHOs8RuLjS1c4TsX29Keyg-exrNBQduf4852gcONwoEyNbfpZrW84rkpyd8vdwpAWMciPzbq4MERb8XYXWW9wq4Lud8iEUGSBQ4IV2bKqGK7ltfzZ6XJimd17J_5gXUkk7vUNhmtRX56IBgz9VaIMLKdSwltXskiN7AhzaYVaFJyB-ulM9Ttxh_0mK4JuFN60HAtv_E2sZoccxxGGAlojazfyA4IFtiuVQDWizN_bFSH4Vy-Lufi_0aaiN69VoXB-4a83yrf-Loej2RwVkoWVE7H1KOpOg2J0S-Slo7SALQz9X_-fpcA__bx__aliexpress.ru%2fitem%2f1005008733439764.html&x5step=1"
+    },
+    {
+      "checked_at": "2026-10-02T11:53:02Z",
+      "price": null,
+      "currency": "RUB",
+      "status": "error",
+      "message": "aliexpress-browser",
+      "title": "Пройдите проверку",
+      "resolved_url": "https://aliexpress.ru//item/1005008733439764.html/_____tmd_____/punish?x5secdata=xfqCV7O4rcwYyb2O8cdTBj8oXui12HVEySV6i8LKL7ld-grVRBfVvDnyalny9xT343ErzbIxESjtRrOfSs6u0JBiSZ7iR9VaGiLpyuYmioZQGVAaoFKSCPpMspVDJEUgSzGDFmnQDiN8DfcL98a_epAfxxTL2RzePvbWms5vPHsEfoEA8mfGopFFo6_YQEwyUlHojIJYrqXjyIc0JqliFR_Je9xi638mL5zmuH27qzV33KcNviYEGr686gzjZLSgf1rWtFC39gCzVYDzV-FOEPND7LR4fVfl8Jcwn1F7mTzYW5oVxnn_OSfciiKnMJiQrQqR9J2B7MdEyRFFZMcDach5OZe40weYe30XXwKfxmbBl5OOme63k055fSATA7gwLl0ELS2nPVu6p6mMeJ4uQfkMfV0fe6-LAEPsxvXxgPHkC37BjsQ05E1yPD0je5ZxljFWYkA-MSrNNq2K12NazNq4-83HKpRw7r4hdwGh5mVaSMCRSFZ6x3gn8d4avIoWfUMR-sbPSG7TqZ0a51HyjbO3BlF-sjawxnUBNT-oBFjo4tpuhcLeTy3hebA5GbskAWih9BW-Ibmtul399wiY_kY2Hmnz5nqAVpcTjuMBXoPznAWJ3jaPRE_lJhsOHPjannNYuJvFJLnxi6yk96Du-Y8j6BfIaYmDkpEOwbXtCpZ_QtExJjr-30jEk364lLgXmm8HseJdP9l52q29l_M1wp-_Sp1X4VM_5TU4jtcG0tNbKt1xM_zsUPfKmCWDOGMPgFR9BwnwSzI5c4fOi_UKSFdw__bx__aliexpress.ru%2fitem%2f1005008733439764.html&x5step=1"
     }
   ]
 }
