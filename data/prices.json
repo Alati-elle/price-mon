@@ -1079,6 +1079,13 @@
       "currency": "RUB",
       "status": "error",
       "message": "HTTP Error 403: Forbidden"
+    },
+    {
+      "checked_at": "2026-10-08T21:38:36Z",
+      "price": null,
+      "currency": "RUB",
+      "status": "error",
+      "message": "HTTP Error 403: Forbidden"
     }
   ],
   "ali-click-30f3a528ee": [
@@ -2197,6 +2204,15 @@
       "currency": "RUB",
       "status": "error",
       "message": "<urlopen error [Errno -3] Temporary failure in name resolution>"
+    },
+    {
+      "checked_at": "2026-10-08T21:38:36Z",
+      "price": null,
+      "currency": "RUB",
+      "status": "error",
+      "message": "aliexpress-browser",
+      "title": "Пройдите проверку",
+      "resolved_url": "https://aliexpress.ru//item/1005008733439764.html/_____tmd_____/punish?x5secdata=xfaDk4kxbAI_LBwf0kJotN-v5CMR-JV1-mpG6iGB7vYlCjR93u6GfAXboa6r87lIgz55JRmryRujS8FFDnzoyLKrLuvYprFDho4lIuu9MZ-qUHikM_DtW1_Vn1SvHyP2AX9iRPXrHk8xc1cfONYBGJapLe3yrmW30bTbQ_Z57LUsrGHjU5Bq-diYxcxaFyL82K-s_1cwS9Q4TmV6uPwadadNKT9MlsDsPyACUBlbuKiTNKr7mdzl4MDWLYKCMBQSt-gIFJqsRLBaUowP9GCBDNz2qVyCVqqNuEXb3j6-jj6V7HAtKy4XyWWZttR6VzrK3v-kgaHlbE-WmWg1ggmabkOzQvryHN8zCJsBNkgwBueCKyk3edubJILt6JMfa_nXMBiWuM_S1x5CcsjS9DcP4pNG2LdrauNIouDRLrtLEguJvIAgfNBJ6k5pjSMxwkzMPzDwcLzqRs7WVP3V2WTkifgzBnXqGp58OR-eGZHKDI7Xcbvi444H_zPNV4nYULY9__w100Zn013ulWEClGg6KZ7xL5fgODUgy2nMIyUHU2ZBLvQyiXe5rfIvw1xSEDXD6AhjOZpfdTrLIANzZJKAefVspCPC2SMZKVMUWRZtkNyyr_treYxpQMrNtI5H6ebAcYz1UJvyO3Q9ewjAmkWbUoxHXP-SVLhRjGGCoBtj8O8WR4LffCXErZ2wslolKImbNw7y8fDjlIIasTpL7OI1ONiGHh1khMwgra1XOL_e3Rf8-zyn_B4Ep6k51e-YyOWdPozqMd2GpNa8R1QsCy3gt_6Q__bx__aliexpress.ru%2fitem%2f1005008733439764.html&x5step=1"
     }
   ],
   "ozon-ru-45f39888": [
@@ -3056,6 +3072,13 @@
     },
     {
       "checked_at": "2026-10-08T12:48:57Z",
+      "price": null,
+      "currency": "RUB",
+      "status": "error",
+      "message": "HTTP Error 403: Forbidden"
+    },
+    {
+      "checked_at": "2026-10-08T21:38:36Z",
       "price": null,
       "currency": "RUB",
       "status": "error",
@@ -4124,6 +4147,15 @@
       "message": "aliexpress-browser",
       "title": "Пройдите проверку",
       "resolved_url": "https://aliexpress.ru//item/1005008733439764.html/_____tmd_____/punish?x5secdata=xfRkIL78dTpwNCJLv_bOxQXJBMOBQXYO580iF0XsJQwzJebNMtTX4k8UacoTneo2Ybeg-6wLh9HQ75EVZ76hN3PQNaCb3TBE8SI7ZNmGgrX3O15VQ6sldXrO6xt28Q_dU4qN8ghENPmqHak1tXerXxvFuVSA6Jg2wYUA1BGBD5y1bzXUMx4TWwmUWXhYzrVFZy3KRKh74H_uAMaff2jM9n0eyrfG0ArzIDaHHBQrkyZPgg0MWyddCHPZM4NlVG4j20RFniSRhN0I1DX8gYJ4oADCP4gZVsqWBXcUUcaYv4AFDD4H8jGAol3jk1hsfJ_0qyqfFJ69AWvGSKaRjDMNUlxckr4KU5UAd-aB-fmKR3zAL8dBZdB2NLujvppZ-ALyuxfbXdPPzRK396XbQJvHtwHkhODN8KsYmKAPzRfxadFahRPsJi3GXUgLT9DaiQRDQVnUhIY7WulUx4yt-6QNG6Bm7rx3nhs79zcFhlD1hMPgWODYnFn69ZtIi89q1nzZAZAx081bGHRVODDuvfZS-QwVLScAIf8z5aOlbh6tXVKnwO8PpQYmycSvF5CRerBQoml4oTvjLUuSzy5M_eQvPQDlfoavCD_Ehr82RdEePsm0v4VCreNr_f0u9lyqEAkoJtq1EwG38ZWSVgrOZ0vkqIv8uG_5Jt9paglE5qg8i5Sziz_pA_jsX4F3MuTc3Z7Tw3VwlZd27rX4-OX-WCxX5xU4XPf1R61difgKrxlFvofDUTKbdZjeL0ip1A7FDvjqMER57sYP3sFKtzFT6m_HZk2w__bx__aliexpress.ru%2fitem%2f1005008733439764.html&x5step=1"
+    },
+    {
+      "checked_at": "2026-10-08T21:38:36Z",
+      "price": null,
+      "currency": "RUB",
+      "status": "error",
+      "message": "aliexpress-browser",
+      "title": "Пройдите проверку",
+      "resolved_url": "https://aliexpress.ru//item/1005008733439764.html/_____tmd_____/punish?x5secdata=xf6VPveyUyWCzqzWEvggImlD1S4ZUYIH6RmyKES5mob4boPP1P4NAKq2jDGx4Wh4v3lIutk7fu0-85Hf-6boLNQt-w14vODeGSpnALMdslLu0G60Owtv6_odotyUICMaY4Hdgqmxgy1bGzvo2-XAEjGmlBait_fn_OlJpTguoQulGUWEIJmwbShKIeriw8XMtGJWgw22VXVjQDUspMODRqR5uJP2BvlQxckIS7yDg2pwG5b1GnX7byq99E1oZaj7zdz3NVHmpRtUHnQTqtARKSlWgWI0YXIJieGGjr4mIB11-tSocs2ix_ZG_vhdN4HXnwMRy7f395eTpm8MHTKfu5wx0dk63w7hfh7EdaRaBXR90ExWPjqgL_9_Mf4cLi8GZPISULAtvGt_CB_H3H8Ekg-QjWG0an2pRX2fmQJz_00Uqc8AiCCl42M0Dg0nlm4ymKQY5KIZHNMr7QTBLNsx4MMqjoYv_sahulbchpmwrXlHJqMO2nvsqmCf45bdAWi10XUDhKQLjyIjXFoIQf0TGTQqUktmZrdk5L1_64LaKLC_YYUbZ9LNB3lShGfsB0KEsoZXJEcUp86rtXErUoLvac7Hucv4NyPghUhybXTXEGrlZVCaIu6AMN_yOE-xVwLRFJrsEQbO2Y7FyKaRZsplo2mUQBpCEs8JYdw3E1KW59xwi9Gv7eJ8Fzww5iwMUq2frezg-d5198UwwiEnX57t3Hy5B21ccHW2gn9M48CxQBum9-foTEDQHyed0NFVe1gWDcxNh-n8v3GAQPwI15lMwm5g__bx__aliexpress.ru%2fitem%2f1005008733439764.html&x5step=1"
     }
   ]
 }
